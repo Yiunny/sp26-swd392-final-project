@@ -159,6 +159,7 @@ out/
 # Publish output
 publish/
 /app/publish/
+appsettings.Development.json
 
 # ==========================================
 # Windows / OS Specific
