@@ -4,8 +4,10 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Thêm Controllers
-builder.Services.AddControllers();
-
+builder.Services.AddControllers()
+    .AddJsonOptions(options => {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Giữ nguyên tên thuộc tính như trong C#
+    });
 // 2. Cấu hình OpenAPI .NET 9
 builder.Services.AddOpenApi();
 
@@ -39,10 +41,9 @@ if (app.Environment.IsDevelopment())
 
 // 6. Kích hoạt Middleware
 app.UseCors("AllowVueApp");
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+await SeedData.InitializeAsync(app);
 
-SeedData.Initialize(app); 
-
-app.Run();
+await app.RunAsync();

@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using MongoDB.EntityFrameworkCore.Extensions;
+using MongoDB.EntityFrameworkCore.Storage;
 using ShopHangTet.Models;
 
 public class ShopHangTetDbContext : DbContext
@@ -7,9 +7,10 @@ public class ShopHangTetDbContext : DbContext
     public ShopHangTetDbContext(DbContextOptions<ShopHangTetDbContext> options)
         : base(options)
     {
+        this.Database.AutoTransactionBehavior = AutoTransactionBehavior.Never;
     }
 
-    // Khai báo các Collection trong MongoDB
+    // Khai báo các Collection
     public DbSet<Product> Products { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<User> Users { get; set; }
@@ -18,9 +19,9 @@ public class ShopHangTetDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        // Chỉ định tên Collection trong MongoDB
-        modelBuilder.Entity<Product>().ToCollection("products");
-        modelBuilder.Entity<Order>().ToCollection("orders");
-        modelBuilder.Entity<User>().ToCollection("users");
+        // Chỉ định tên Collection
+        modelBuilder.Entity<Product>();
+        modelBuilder.Entity<Order>();
+        modelBuilder.Entity<User>();
     }
 }
