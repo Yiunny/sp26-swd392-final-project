@@ -23,12 +23,6 @@ public static class SeedData
             // Seed Gift Boxes
             await SeedGiftBoxesAsync(context);
 
-            // Seed Admin User
-            await SeedUsersAsync(context);
-
-            // Legacy data for compatibility
-            await SeedLegacyDataAsync(context);
-
             await context.SaveChangesAsync();
             Console.WriteLine("----> Đã Seed dữ liệu mẫu thành công vào MongoDB!");
         }
@@ -129,47 +123,4 @@ public static class SeedData
         await context.GiftBoxes.AddRangeAsync(giftBoxes);
     }
 
-    private static async Task SeedUsersAsync(ShopHangTetDbContext context)
-    {
-        if (await context.Users.AnyAsync()) return;
-
-        var users = new List<UserModel>
-        {
-            new UserModel
-            {
-                Email = "admin@shophangtet.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
-                FullName = "Admin Shop Hàng Tết",
-                Phone = "0123456789",
-                Role = "ADMIN",
-                Status = "ACTIVE",
-                IsEmailVerified = true
-            },
-            new UserModel
-            {
-                Email = "customer@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("customer123"),
-                FullName = "Khách Hàng Test",
-                Phone = "0987654321", 
-                Role = "MEMBER",
-                Status = "ACTIVE",
-                IsEmailVerified = true
-            }
-        };
-
-        await context.Users.AddRangeAsync(users);
-    }
-
-    private static async Task SeedLegacyDataAsync(ShopHangTetDbContext context)
-    {
-        // Legacy Products for compatibility
-        if (!await context.ProductsLegacy.AnyAsync())
-        {
-            context.ProductsLegacy.AddRange(
-                new Product { Name = "Rượu Vang Đỏ", Price = 500000, Category = "Rượu", Meaning = "Quà biếu đối tác", IsComponent = true },
-                new Product { Name = "Bánh Quy Bơ", Price = 150000, Category = "Bánh", Meaning = "Quà sum vầy", IsComponent = true },
-                new Product { Name = "Giỏ quà Đoàn Viên", Price = 1200000, Category = "Giỏ quà sẵn", Meaning = "Quà sum vầy", IsComponent = false }
-            );
-        }
-    }
 }

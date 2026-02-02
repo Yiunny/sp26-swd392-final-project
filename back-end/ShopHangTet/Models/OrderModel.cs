@@ -3,9 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShopHangTet.Models;
 
-/// <summary>
 /// Đơn hàng (Hỗ trợ Guest & Authenticated, Multi-address)
-/// </summary>
 public class OrderModel
 {
     [Key]
@@ -20,16 +18,17 @@ public class OrderModel
     public string CustomerEmail { get; set; } = string.Empty;
     public string CustomerPhone { get; set; } = string.Empty;
     
-    // Danh sách sản phẩm (có thể là custom basket hoặc pre-made)
+    // Danh sách sản phẩm (READY_MADE hoặc MIX_MATCH)
     public List<OrderItem> Items { get; set; } = new();
     
-    // Multi-address delivery
+    // B2C only - B2B use OrderDelivery table
     public List<DeliveryAddress> DeliveryAddresses { get; set; } = new();
     
     // Scheduled delivery
+    public DateTime DeliveryDate { get; set; }
     public ObjectId? DeliverySlotId { get; set; }
-    public DateTime? ScheduledDeliveryDate { get; set; }
-    public string? DeliveryTimeSlot { get; set; }
+    public string? GreetingMessage { get; set; }
+    public string? GreetingCardUrl { get; set; }
     
     // Pricing
     public decimal SubTotal { get; set; }
@@ -37,12 +36,7 @@ public class OrderModel
     public decimal TotalAmount { get; set; }
     
     // Order status
-    public OrderStatus Status { get; set; } = OrderStatus.Pending;
-    
-    // Payment
-    public PaymentMethod PaymentMethod { get; set; }
-    public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Unpaid;
-    public string? PaymentTransactionId { get; set; }
+    public OrderStatus Status { get; set; } = OrderStatus.PAYMENT_CONFIRMING;
     
     // Tracking
     public List<OrderStatusHistory> StatusHistory { get; set; } = new();
@@ -53,19 +47,29 @@ public class OrderModel
 
 public class OrderItem
 {
-    public ObjectId ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
-    public string ProductType { get; set; } = string.Empty; // "CustomBasket", "PreMadeBasket", "SingleItem"
+    public OrderItemType Type { get; set; } = OrderItemType.READY_MADE; // READY_MADE | MIX_MATCH
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal TotalPrice { get; set; }
+    public List<OrderItemSnapshotItem> SnapshotItems { get; set; } = new();
     
-    // Nếu là custom basket
-    public ObjectId? CustomBasketId { get; set; }
+    // READY_MADE -> GiftBoxId, MIX_MATCH -> CustomBoxId
+    public ObjectId? GiftBoxId { get; set; }
+    public ObjectId? CustomBoxId { get; set; }
+}
+
+public class OrderItemSnapshotItem
+{
+    public string ItemId { get; set; } = string.Empty;
+    public string ItemName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
 }
 
 public class DeliveryAddress
 {
+    public string? AddressId { get; set; }
     public string RecipientName { get; set; } = string.Empty;
     public string RecipientPhone { get; set; } = string.Empty;
     public string AddressLine { get; set; } = string.Empty;
@@ -73,6 +77,7 @@ public class DeliveryAddress
     public string District { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
+    public int Quantity { get; set; }
     
     // Gifting options per address
     public string GreetingMessage { get; set; } = string.Empty;
@@ -85,32 +90,4 @@ public class OrderStatusHistory
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string UpdatedBy { get; set; } = string.Empty; // Admin/System
     public string Notes { get; set; } = string.Empty;
-}
-
-public enum OrderStatus
-{
-    Pending,          // Chờ xử lý
-    PaymentConfirmed, // Đã thanh toán
-    Processing,       // Đang đóng gói
-    Shipping,         // Đang giao
-    Delivered,        // Đã giao
-    Cancelled,        // Đã hủy
-    Refunded          // Đã hoàn tiền
-}
-
-public enum PaymentMethod
-{
-    COD,              // Tiền mặt
-    BankTransfer,     // Chuyển khoản
-    VNPAY,
-    Momo,
-    ZaloPay
-}
-
-public enum PaymentStatus
-{
-    Unpaid,
-    Paid,
-    Refunded,
-    Failed
 }

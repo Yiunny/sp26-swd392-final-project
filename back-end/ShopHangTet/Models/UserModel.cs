@@ -28,10 +28,10 @@ public class UserModel
     public string Phone { get; set; } = string.Empty;
     
     [BsonElement("role")]
-    public string Role { get; set; } = "MEMBER"; // MEMBER, STAFF, ADMIN
+    public UserRole Role { get; set; } = UserRole.MEMBER;
     
     [BsonElement("status")]
-    public string Status { get; set; } = "ACTIVE"; // ACTIVE, DISABLED
+    public UserStatus Status { get; set; } = UserStatus.ACTIVE;
     
     // OTP verification
     [BsonElement("otpCode")]

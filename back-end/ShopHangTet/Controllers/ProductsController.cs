@@ -13,10 +13,10 @@ namespace ShopHangTet.Controllers
 
         public ProductsController(ShopHangTetDbContext context) => _context = context;
 
-        [HttpGet("basket-items")]
-        public async Task<IActionResult> GetBasketItems() 
+        [HttpGet("items")]
+        public async Task<IActionResult> GetItems() 
         {
-            var items = await _context.BasketItems
+            var items = await _context.Items
                 .Where(x => x.IsActive)
                 .ToListAsync();
             return Ok(items);
@@ -25,7 +25,7 @@ namespace ShopHangTet.Controllers
         [HttpGet("gift-boxes")]
         public async Task<IActionResult> GetGiftBoxes()
         {
-            var giftBoxes = await _context.BasketTemplates
+            var giftBoxes = await _context.GiftBoxes
                 .Where(x => x.IsActive)
                 .ToListAsync();
             return Ok(giftBoxes);

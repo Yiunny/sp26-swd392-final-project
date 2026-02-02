@@ -3,9 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace ShopHangTet.Models
 {
-    /// <summary>
     /// Cart Model - Giỏ hàng (Guest & Member)
-    /// </summary>
     public class Cart
     {
         [BsonId]
@@ -35,7 +33,7 @@ namespace ShopHangTet.Models
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         [BsonElement("type")]
-        public string Type { get; set; } = string.Empty; // READY_MADE, MIX_MATCH
+        public OrderItemType Type { get; set; } = OrderItemType.READY_MADE; // READY_MADE, MIX_MATCH
 
         [BsonElement("giftBoxId")]
         public string? GiftBoxId { get; set; }

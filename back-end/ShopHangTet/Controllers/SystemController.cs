@@ -6,15 +6,15 @@ namespace ShopHangTet.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class HealthController : ControllerBase
+    public class SystemController : ControllerBase
     {
-        private readonly ILogger<HealthController> _logger;
+        private readonly ILogger<SystemController> _logger;
         private readonly IJwtService? _jwtService;
         private readonly IOtpService? _otpService;
         private readonly IEmailService? _emailService;
 
-        public HealthController(
-            ILogger<HealthController> logger,
+        public SystemController(
+            ILogger<SystemController> logger,
             IJwtService? jwtService = null,
             IOtpService? otpService = null,
             IEmailService? emailService = null)
@@ -25,9 +25,7 @@ namespace ShopHangTet.Controllers
             _emailService = emailService;
         }
 
-        /// <summary>
         /// Health Check API - Kiểm tra trạng thái hệ thống
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Get()
         {
@@ -41,7 +39,7 @@ namespace ShopHangTet.Controllers
                     Services = new
                     {
                         JwtService = _jwtService != null ? "Available" : "Not Available",
-                        OtpService = _otpService != null ? "Available" : "Not Available", 
+                        OtpService = _otpService != null ? "Available" : "Not Available",
                         EmailService = _emailService != null ? "Available" : "Not Available"
                     },
                     Database = new
@@ -63,7 +61,7 @@ namespace ShopHangTet.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Health check failed");
-                
+
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -74,9 +72,7 @@ namespace ShopHangTet.Controllers
             }
         }
 
-        /// <summary>
         /// Test JWT Token Generation
-        /// </summary>
         [HttpPost("test-jwt")]
         public IActionResult TestJwt([FromBody] TestJwtRequest request)
         {
@@ -96,8 +92,8 @@ namespace ShopHangTet.Controllers
                     Id = "test-user-id",
                     Email = request.Email,
                     FullName = request.FullName ?? "Test User",
-                    Role = "MEMBER",
-                    Status = "ACTIVE"
+                    Role = Models.UserRole.MEMBER,
+                    Status = Models.UserStatus.ACTIVE
                 };
 
                 var token = _jwtService.GenerateToken(testUser);
@@ -113,7 +109,7 @@ namespace ShopHangTet.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "JWT test failed");
-                
+
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -123,9 +119,7 @@ namespace ShopHangTet.Controllers
             }
         }
 
-        /// <summary>
         /// Test OTP Generation
-        /// </summary>
         [HttpPost("test-otp")]
         public async Task<IActionResult> TestOtp([FromBody] TestOtpRequest request)
         {
@@ -153,7 +147,7 @@ namespace ShopHangTet.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "OTP test failed for email: {Email}", request.Email);
-                
+
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,

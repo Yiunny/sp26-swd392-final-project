@@ -3,25 +3,25 @@ using ShopHangTet.Models;
 
 namespace ShopHangTet.Services
 {
-    /// <summary>
     /// Interface cho OrderService - quản lý đơn hàng B2C và B2B
-    /// </summary>
     public interface IOrderService
     {
-        // === Order Placement (Legacy - for compatibility) ===
-        Task<OrderModel> PlaceOrderAsync(CreateOrderDto dto);
+        // === Order Placement (B2C/B2B separated) ===
+        Task<OrderModel> PlaceB2COrderAsync(CreateOrderDto dto);
         Task<OrderModel> PlaceB2BOrderAsync(CreateOrderDto dto);
         
         // === Order Validation ===
-        Task<OrderValidationResult> ValidateOrderAsync(CreateOrderDto dto);
+        Task<OrderValidationResult> ValidateB2COrderAsync(CreateOrderDto dto);
+        Task<OrderValidationResult> ValidateB2BOrderAsync(CreateOrderDto dto);
         
         // === Order Tracking ===
         Task<OrderTrackingResult?> TrackOrderAsync(string orderCode, string email);
+
+        // === Status & Inventory ===
+        Task<OrderModel> UpdateStatusAsync(string orderId, OrderStatus status, string updatedBy, string? notes = null);
     }
 
-    /// <summary>
     /// DTO tạo đơn hàng (dùng trong OrderService)
-    /// </summary>
     public class CreateOrderDto
     {
         public string? UserId { get; set; }
@@ -32,22 +32,23 @@ namespace ShopHangTet.Services
         public List<OrderItemRequestDto> Items { get; set; } = new();
         public List<DeliveryAddressRequestDto> DeliveryAddresses { get; set; } = new();
         
+        public DateTime DeliveryDate { get; set; }
         public string? DeliverySlotId { get; set; }
-        public string PaymentMethod { get; set; } = "COD";
-        
-        public OrderTypeDto OrderType { get; set; } = OrderTypeDto.B2C;
+        public string? GreetingMessage { get; set; }
+        public string? GreetingCardUrl { get; set; }
     }
 
     public class OrderItemRequestDto
     {
-        public string ProductId { get; set; } = string.Empty;
-        public string ProductType { get; set; } = string.Empty;
+        public OrderItemType Type { get; set; } = OrderItemType.READY_MADE;
+        public string? GiftBoxId { get; set; }
+        public string? CustomBoxId { get; set; }
         public int Quantity { get; set; }
-        public string? CustomBasketId { get; set; }
     }
 
     public class DeliveryAddressRequestDto
     {
+        public string? AddressId { get; set; }
         public string RecipientName { get; set; } = string.Empty;
         public string RecipientPhone { get; set; } = string.Empty;
         public string AddressLine { get; set; } = string.Empty;
@@ -55,6 +56,7 @@ namespace ShopHangTet.Services
         public string District { get; set; } = string.Empty;
         public string City { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
+        public int Quantity { get; set; }
         public string GreetingMessage { get; set; } = string.Empty;
         public bool HideInvoice { get; set; }
     }

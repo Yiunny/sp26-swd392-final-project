@@ -1,50 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using ShopHangTet.Models;
 
 namespace ShopHangTet.DTOs
 {
-    // ========== ENUMS (trong DTOs để tránh conflict với Models) ==========
-    public enum OrderTypeDto
-    {
-        B2C = 0,
-        B2B = 1
-    }
-
-    public enum OrderItemTypeDto
-    {
-        READY_MADE = 0,
-        MIX_MATCH = 1
-    }
-
-    /// <summary>
-    /// 4 trạng thái đơn hàng theo nghiệp vụ:
-    /// - PAYMENT_CONFIRMING: Đang xác nhận thanh toán
-    /// - PREPARING: Đang chuẩn bị
-    /// - SHIPPING: Đang được giao
-    /// - COMPLETED: Hoàn thành
-    /// </summary>
-    public enum OrderStatusDto
-    {
-        PAYMENT_CONFIRMING = 0,
-        PREPARING = 1,
-        SHIPPING = 2,
-        COMPLETED = 3
-    }
-
-    public enum UserRoleDto
-    {
-        MEMBER = 0,
-        STAFF = 1,
-        ADMIN = 2
-    }
-
-    public enum UserStatusDto
-    {
-        ACTIVE = 0,
-        DISABLED = 1
-    }
-
     // ========== CORE DTOs ==========
     public class ApiResponse<T>
     {
@@ -133,8 +93,8 @@ namespace ShopHangTet.DTOs
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string? Phone { get; set; }
-        public UserRoleDto Role { get; set; }
-        public UserStatusDto Status { get; set; }
+        public UserRole Role { get; set; }
+        public UserStatus Status { get; set; }
     }
 
     public class UserResponseDto
@@ -143,8 +103,8 @@ namespace ShopHangTet.DTOs
         public string Email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string? Phone { get; set; }
-        public UserRoleDto Role { get; set; }
-        public UserStatusDto Status { get; set; }
+        public UserRole Role { get; set; }
+        public UserStatus Status { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
@@ -203,7 +163,7 @@ namespace ShopHangTet.DTOs
         public bool IsActive { get; set; } = true;
     }
 
-    public class BasketItemDto
+    public class CustomBoxItemDto
     {
         [Required]
         public string ItemId { get; set; } = string.Empty;
@@ -222,29 +182,26 @@ namespace ShopHangTet.DTOs
     public class CustomBoxDto
     {
         public string Id { get; set; } = string.Empty;
-        public List<BasketItemDto> Items { get; set; } = new();
+        public List<CustomBoxItemDto> Items { get; set; } = new();
         public decimal TotalPrice { get; set; }
         public DateTime CreatedAt { get; set; }
     }
 
-    public class CreateCustomBasketDto
+    public class CreateCustomBoxDto
     {
         [Required]
         [MinLength(1, ErrorMessage = "Ít nhất 1 item được yêu cầu")]
-        public List<BasketItemDto> Items { get; set; } = new();
+        public List<CustomBoxItemDto> Items { get; set; } = new();
         
-        public string? BasketTemplateId { get; set; }
         public string? GreetingMessage { get; set; }
         public string? CanvaCardLink { get; set; }
         public bool HideInvoice { get; set; }
     }
 
-    /// <summary>
     /// Rule cho Mix & Match:
     /// - Ít nhất 1 đồ uống
     /// - 2-4 món ăn  
     /// - Tối đa 1 rượu
-    /// </summary>
     public class MixMatchRulesDto
     {
         public int MinDrinks { get; set; } = 1;
@@ -301,7 +258,7 @@ namespace ShopHangTet.DTOs
     public class OrderItemDto
     {
         [Required]
-        public OrderItemTypeDto Type { get; set; }
+        public OrderItemType Type { get; set; }
         
         public string? GiftBoxId { get; set; }
         public string? CustomBoxId { get; set; }
@@ -314,10 +271,8 @@ namespace ShopHangTet.DTOs
         public string? Name { get; set; }
     }
 
-    /// <summary>
     /// DTO cho đơn hàng B2C - 1 địa chỉ giao hàng
     /// Guest có thể dùng
-    /// </summary>
     public class CreateOrderB2CDto
     {
         [Required]
@@ -345,10 +300,8 @@ namespace ShopHangTet.DTOs
         public DateTime DeliveryDate { get; set; }
     }
 
-    /// <summary>
     /// DTO cho đơn hàng B2B - nhiều địa chỉ giao hàng
     /// Chỉ Member mới dùng được
-    /// </summary>
     public class CreateOrderB2BDto
     {
         [Required]
@@ -392,7 +345,7 @@ namespace ShopHangTet.DTOs
     public class UpdateOrderStatusDto
     {
         [Required]
-        public OrderStatusDto Status { get; set; }
+        public OrderStatus Status { get; set; }
         
         public string? Note { get; set; }
     }
@@ -404,8 +357,8 @@ namespace ShopHangTet.DTOs
         public string OrderCode { get; set; } = string.Empty;
         public string? UserId { get; set; }
         public string Email { get; set; } = string.Empty;
-        public OrderTypeDto OrderType { get; set; }
-        public OrderStatusDto Status { get; set; }
+        public OrderType OrderType { get; set; }
+        public OrderStatus Status { get; set; }
         public decimal TotalAmount { get; set; }
         public DateTime DeliveryDate { get; set; }
         public string? GreetingMessage { get; set; }
@@ -418,7 +371,7 @@ namespace ShopHangTet.DTOs
     public class OrderItemResponseDto
     {
         public string Id { get; set; } = string.Empty;
-        public OrderItemTypeDto Type { get; set; }
+        public OrderItemType Type { get; set; }
         public string? GiftBoxId { get; set; }
         public string? CustomBoxId { get; set; }
         public int Quantity { get; set; }
@@ -439,7 +392,7 @@ namespace ShopHangTet.DTOs
 
     public class OrderStatusHistoryDto
     {
-        public OrderStatusDto Status { get; set; }
+        public OrderStatus Status { get; set; }
         public DateTime ChangedAt { get; set; }
         public string? Note { get; set; }
         public string? ChangedBy { get; set; }
@@ -459,7 +412,7 @@ namespace ShopHangTet.DTOs
     public class CartItemDto
     {
         public string Id { get; set; } = string.Empty;
-        public OrderItemTypeDto Type { get; set; }
+        public OrderItemType Type { get; set; }
         public string? GiftBoxId { get; set; }
         public string? CustomBoxId { get; set; }
         public int Quantity { get; set; }
@@ -470,7 +423,7 @@ namespace ShopHangTet.DTOs
     public class AddToCartDto
     {
         [Required]
-        public OrderItemTypeDto Type { get; set; }
+        public OrderItemType Type { get; set; }
         
         public string? GiftBoxId { get; set; }
         public string? CustomBoxId { get; set; }

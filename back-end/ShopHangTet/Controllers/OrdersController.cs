@@ -11,45 +11,44 @@ public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
     private readonly IEmailService _emailService;
+    private readonly ILogger<OrdersController> _logger;
 
-    public OrdersController(IOrderService orderService, IEmailService emailService)
+    public OrdersController(IOrderService orderService, IEmailService emailService, ILogger<OrdersController> logger)
     {
         _orderService = orderService;
         _emailService = emailService;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Tạo đơn hàng mới (B2C hoặc B2B)
-    /// </summary>
-    [HttpPost]
-    public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto request)
+    /// Tạo đơn hàng mới B2C (Guest hoặc Member)
+    [HttpPost("b2c")]
+    public async Task<IActionResult> CreateB2COrder([FromBody] CreateOrderDto request)
     {
         try
         {
             // Validate request
-            var validation = await _orderService.ValidateOrderAsync(request);
+            var validation = await _orderService.ValidateB2COrderAsync(request);
             if (!validation.IsValid)
             {
                 return BadRequest(new { errors = validation.Errors });
             }
 
             // Place order
-            Models.OrderModel order;
-            if (request.OrderType == OrderTypeDto.B2B)
-            {
-                order = await _orderService.PlaceB2BOrderAsync(request);
-            }
-            else
-            {
-                order = await _orderService.PlaceOrderAsync(request);
-            }
+            var order = await _orderService.PlaceB2COrderAsync(request);
 
             // Send confirmation email
-            await _emailService.SendOrderConfirmationAsync(
-                request.CustomerEmail, 
-                order.OrderCode, 
-                order.TotalAmount
-            );
+            try
+            {
+                await _emailService.SendOrderConfirmationAsync(
+                    request.CustomerEmail,
+                    order.OrderCode,
+                    order.TotalAmount
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Email sending failed for order {OrderCode}", order.OrderCode);
+            }
 
             return Ok(new { 
                 success = true,
@@ -67,9 +66,51 @@ public class OrdersController : ControllerBase
         }
     }
 
-    /// <summary>
+    /// Tạo đơn hàng mới B2B (Member - nhiều địa chỉ)
+    [HttpPost("b2b")]
+    public async Task<IActionResult> CreateB2BOrder([FromBody] CreateOrderDto request)
+    {
+        try
+        {
+            // Validate request
+            var validation = await _orderService.ValidateB2BOrderAsync(request);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { errors = validation.Errors });
+            }
+
+            var order = await _orderService.PlaceB2BOrderAsync(request);
+
+            try
+            {
+                await _emailService.SendOrderConfirmationAsync(
+                    request.CustomerEmail,
+                    order.OrderCode,
+                    order.TotalAmount
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Email sending failed for order {OrderCode}", order.OrderCode);
+            }
+
+            return Ok(new {
+                success = true,
+                orderId = order.Id.ToString(),
+                orderCode = order.OrderCode,
+                message = "Order placed successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new {
+                success = false,
+                message = ex.Message
+            });
+        }
+    }
+
     /// Track đơn hàng cho guest (không cần đăng nhập)
-    /// </summary>
     [HttpGet("track")]
     public async Task<IActionResult> TrackOrder([FromQuery] string orderCode, [FromQuery] string email)
     {
@@ -89,9 +130,7 @@ public class OrdersController : ControllerBase
         }
     }
 
-    /// <summary>
     /// Lấy danh sách đơn hàng (cho authenticated user)
-    /// </summary>
     [HttpGet("my-orders")]
     // [Authorize] // Uncomment khi implement authentication
     public async Task<IActionResult> GetMyOrders([FromQuery] int skip = 0, [FromQuery] int take = 20)
@@ -100,7 +139,6 @@ public class OrdersController : ControllerBase
         {
             // TODO: Implement GetOrdersByUserAsync in OrderService
             // For now, return empty list
-            var userId = "temp-user-id"; // Placeholder - get from JWT token
             return Ok(new { orders = new List<object>(), message = "Coming soon" });
         }
         catch (Exception ex)

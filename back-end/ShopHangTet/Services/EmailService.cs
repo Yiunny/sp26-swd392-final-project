@@ -76,7 +76,7 @@ namespace ShopHangTet.Services
                 <h2>Cảm ơn bạn đã đặt hàng!</h2>
                 <p><strong>Mã đơn hàng:</strong> {order.OrderCode}</p>
                 <p><strong>Tổng tiền:</strong> {order.TotalAmount:N0} VNĐ</p>
-                <p><strong>Ngày giao hàng:</strong> {order.ScheduledDeliveryDate:dd/MM/yyyy}</p>
+                <p><strong>Ngày giao hàng:</strong> {order.DeliveryDate:dd/MM/yyyy}</p>
                 <p><strong>Trạng thái:</strong> Đang xác nhận thanh toán</p>
                 
                 <h3>Thông tin giao hàng:</h3>
@@ -152,13 +152,10 @@ namespace ShopHangTet.Services
         {
             return status switch
             {
-                Models.OrderStatus.Pending => "Đang xác nhận thanh toán",
-                Models.OrderStatus.PaymentConfirmed => "Đã xác nhận thanh toán",
-                Models.OrderStatus.Processing => "Đang chuẩn bị",
-                Models.OrderStatus.Shipping => "Đang được giao",
-                Models.OrderStatus.Delivered => "Hoàn thành",
-                Models.OrderStatus.Cancelled => "Đã hủy",
-                Models.OrderStatus.Refunded => "Đã hoàn tiền",
+                Models.OrderStatus.PAYMENT_CONFIRMING => "Đang xác nhận thanh toán",
+                Models.OrderStatus.PREPARING => "Đang chuẩn bị",
+                Models.OrderStatus.SHIPPING => "Đang được giao",
+                Models.OrderStatus.COMPLETED => "Hoàn thành",
                 _ => "Không xác định"
             };
         }

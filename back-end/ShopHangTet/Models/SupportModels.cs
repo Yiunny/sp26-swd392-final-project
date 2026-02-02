@@ -187,6 +187,25 @@ namespace ShopHangTet.Models
     }
 
     /// <summary>
+    /// Order Delivery Item - Sản phẩm theo từng địa chỉ giao hàng (B2B)
+    /// </summary>
+    public class OrderDeliveryItem
+    {
+        [BsonId]
+        [BsonRepresentation(BsonType.ObjectId)]
+        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+
+        [BsonElement("orderDeliveryId")]
+        public string OrderDeliveryId { get; set; } = string.Empty;
+
+        [BsonElement("orderItemId")]
+        public string OrderItemId { get; set; } = string.Empty;
+
+        [BsonElement("quantity")]
+        public int Quantity { get; set; }
+    }
+
+    /// <summary>
     /// Inventory Log - Lịch sử thay đổi tồn kho
     /// </summary>
     public class InventoryLog

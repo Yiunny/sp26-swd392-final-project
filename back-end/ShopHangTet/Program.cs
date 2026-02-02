@@ -87,12 +87,9 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 // 9. Đăng ký Repository Dependencies
-builder.Services.AddScoped<IBasketItemRepository, BasketItemRepository>();
-builder.Services.AddScoped<IBasketTemplateRepository, BasketTemplateRepository>();
 builder.Services.AddScoped<IDeliverySlotRepository, DeliverySlotRepository>();
 
 // 10. Đăng ký Application Services
-builder.Services.AddScoped<ICustomBasketService, CustomBasketService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 // builder.Services.AddScoped<OrderService>();
 
