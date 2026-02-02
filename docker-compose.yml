@@ -9,7 +9,7 @@ services:
     volumes:
       - mongo_data:/data/db
 
-  # Backend (Tùy chọn nếu muốn chạy BE trong Docker)
+  # Backend
   backend:
     build: ./back-end/ShopHangTet
     ports:
@@ -19,7 +19,7 @@ services:
     depends_on:
       - db
 
-  # Frontend (Tùy chọn)
+  # Frontend
   frontend:
     build: ./front-end
     ports:
