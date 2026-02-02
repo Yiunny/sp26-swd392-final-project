@@ -29,7 +29,8 @@ public static class SeedData
         catch (Exception ex)
         {
             Console.WriteLine($"Seed error: {ex.Message}");
-            // Don't throw - let the app continue even if seeding fails
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            throw; // Re-throw to see the error
         }
     }
 

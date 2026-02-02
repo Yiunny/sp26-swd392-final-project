@@ -137,15 +137,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// 13. Seed Data (nếu có)
-try
-{
-    await SeedData.InitializeAsync(app);
-    Console.WriteLine("----> Database seeding completed successfully!");
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"----> Database seeding failed: {ex.Message}");
-}
+// Seed data
+await SeedData.InitializeAsync(app);
 
 await app.RunAsync();
