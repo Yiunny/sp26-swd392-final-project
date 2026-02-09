@@ -20,7 +20,7 @@ public enum OrderItemType
     MIX_MATCH
 }
 
-/// Item Category Enum for Mix & Match validation theo SWD
+/// Item Category Enum for Mix & Match validation
 public enum ItemCategory
 {
     DRINK,

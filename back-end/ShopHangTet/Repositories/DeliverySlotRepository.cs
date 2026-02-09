@@ -69,10 +69,7 @@ public class DeliverySlotRepository : IDeliverySlotRepository
         return result.DeletedCount > 0;
     }
 
-    /// <summary>
-    /// ✅ Atomic increment với auto-lock khi đạt max
-    /// QUAN TRỌNG: Tránh race condition
-    /// </summary>
+    /// Atomic increment với auto-lock khi đạt max
     public async Task<bool> IncrementOrderCountAsync(string slotId)
     {
         var filter = Builders<DeliverySlot>.Filter.And(
@@ -99,7 +96,7 @@ public class DeliverySlotRepository : IDeliverySlotRepository
         if (slot.CurrentOrderCount + 1 >= slot.MaxOrdersPerSlot)
         {
             finalUpdate = updateWithLock;
-            Console.WriteLine($"🔒 [Slot Lock] Slot {slotId} will be locked after this order");
+            Console.WriteLine($" [Slot Lock] Slot {slotId} will be locked after this order");
         }
         else
         {
@@ -110,17 +107,15 @@ public class DeliverySlotRepository : IDeliverySlotRepository
         
         if (result.ModifiedCount == 0)
         {
-            Console.WriteLine($"❌ [Slot Full] Slot {slotId} is full or locked");
+            Console.WriteLine($" [Slot Full] Slot {slotId} is full or locked");
             return false;
         }
         
-        Console.WriteLine($"✅ [Slot Incremented] Slot {slotId}: {slot.CurrentOrderCount} -> {slot.CurrentOrderCount + 1}");
+        Console.WriteLine($" [Slot Incremented] Slot {slotId}: {slot.CurrentOrderCount} -> {slot.CurrentOrderCount + 1}");
         return true;
     }
 
-    /// <summary>
-    /// ✅ Decrement khi hủy đơn (rollback logic)
-    /// </summary>
+    /// Decrement khi hủy đơn (rollback logic)
     public async Task<bool> DecrementOrderCountAsync(string slotId)
     {
         var filter = Builders<DeliverySlot>.Filter.And(
@@ -136,7 +131,7 @@ public class DeliverySlotRepository : IDeliverySlotRepository
         
         if (result.ModifiedCount > 0)
         {
-            Console.WriteLine($"🔓 [Slot Decremented] Slot {slotId} unlocked and count decreased");
+            Console.WriteLine($" [Slot Decremented] Slot {slotId} unlocked and count decreased");
             return true;
         }
         

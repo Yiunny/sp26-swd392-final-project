@@ -275,13 +275,22 @@ namespace ShopHangTet.DTOs
     /// Guest có thể dùng
     public class CreateOrderB2CDto
     {
+        public string? UserId { get; set; } // Nullable for Guest
+        
+        [Required]
+        [EmailAddress]
+        public string CustomerEmail { get; set; } = string.Empty;
+        
+        [Required]
+        public string CustomerName { get; set; } = string.Empty;
+        
+        [Required]
+        [Phone]
+        public string CustomerPhone { get; set; } = string.Empty;
+        
         [Required]
         [MinLength(1)]
         public List<OrderItemDto> Items { get; set; } = new();
-
-        [Required]
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
 
         [Required]
         public string ReceiverName { get; set; } = string.Empty;
@@ -298,6 +307,8 @@ namespace ShopHangTet.DTOs
         
         [Required]
         public DateTime DeliveryDate { get; set; }
+        
+        public string? DeliverySlotId { get; set; }
     }
 
     /// DTO cho đơn hàng B2B - nhiều địa chỉ giao hàng
@@ -305,20 +316,63 @@ namespace ShopHangTet.DTOs
     public class CreateOrderB2BDto
     {
         [Required]
+        public string UserId { get; set; } = string.Empty; // B2B BẮT BUỘC login
+        
+        [Required]
+        [EmailAddress]
+        public string CustomerEmail { get; set; } = string.Empty;
+        
+        [Required]
+        public string CustomerName { get; set; } = string.Empty;
+        
+        [Required]
+        [Phone]
+        public string CustomerPhone { get; set; } = string.Empty;
+        
+        [Required]
         [MinLength(1)]
         public List<OrderItemDto> Items { get; set; } = new();
 
         [Required]
-        [MinLength(1)]
-        public List<B2BDeliveryAddressDto> DeliveryAddresses { get; set; } = new();
+        [MinLength(2)] // B2B phải có ít nhất 2 địa chỉ
+        public List<B2BDeliveryAllocationDto> DeliveryAllocations { get; set; } = new();
 
         public string? GreetingMessage { get; set; }
         public string? GreetingCardUrl { get; set; }
 
         [Required]
         public DateTime DeliveryDate { get; set; }
+        
+        public string? DeliverySlotId { get; set; }
     }
 
+    /// B2B Delivery Allocation - Phân bổ TỪNG SẢN PHẨM cho TỪNG ĐỊA CHỈ
+    public class B2BDeliveryAllocationDto
+    {
+        [Required]
+        public string AddressId { get; set; } = string.Empty; // FK to Address
+        
+        [Required]
+        [MinLength(1)]
+        public List<OrderItemAllocationDto> ItemAllocations { get; set; } = new();
+        
+        public string? GreetingMessage { get; set; }
+        public bool HideInvoice { get; set; }
+    }
+
+    /// Phân bổ số lượng cho từng OrderItem
+    public class OrderItemAllocationDto
+    {
+        [Required]
+        public int OrderItemIndex { get; set; } // Index trong CreateOrderB2BDto.Items
+        
+        [Required]
+        [Range(1, int.MaxValue)]
+        public int Quantity { get; set; }
+    }
+
+    /// ⚠️ DEPRECATED - Sử dụng B2BDeliveryAllocationDto thay thế
+    [Obsolete("Use B2BDeliveryAllocationDto with item allocations instead")]
     public class B2BDeliveryAddressDto
     {
         [Required]
@@ -350,7 +404,7 @@ namespace ShopHangTet.DTOs
         public string? Note { get; set; }
     }
 
-    /// Mix & Match Validation Result theo SWD
+    /// Mix & Match Validation Result
     public class MixMatchValidationResult
     {
         public bool IsValid { get; set; }
@@ -360,8 +414,8 @@ namespace ShopHangTet.DTOs
         public int NutCount { get; set; }
         public int AlcoholCount { get; set; }
         
-        /// SWD Rules: ≥1 DRINK, 2-4 FOOD, ≤1 ALCOHOL
-        public bool MeetsSwdRules => DrinkCount >= 1 && FoodCount >= 2 && FoodCount <= 4 && AlcoholCount <= 1;
+        ///Rules: ≥1 DRINK, 2-4 FOOD, ≤1 ALCOHOL
+        public bool MeetsRules => DrinkCount >= 1 && FoodCount >= 2 && FoodCount <= 4 && AlcoholCount <= 1;
     }
 
     // ========== ORDER RESPONSE DTOs ==========

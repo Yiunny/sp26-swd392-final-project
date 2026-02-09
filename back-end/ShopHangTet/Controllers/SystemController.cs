@@ -27,7 +27,7 @@ namespace ShopHangTet.Controllers
 
         /// Health Check API - Kiểm tra trạng thái hệ thống
         [HttpGet("health")]
-        public async Task<IActionResult> Get()
+        public IActionResult Get()
         {
             try
             {
