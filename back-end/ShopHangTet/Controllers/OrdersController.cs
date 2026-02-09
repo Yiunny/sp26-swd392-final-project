@@ -21,7 +21,7 @@ public class OrdersController : ControllerBase
         _logger = logger;
     }
 
-    /// Tạo đơn hàng B2C (Guest hoặc Member) - SWD Compliant
+    /// Tạo đơn hàng B2C (Guest hoặc Member) - Compliant
     [HttpPost("b2c")]
     public async Task<IActionResult> CreateB2COrder([FromBody] CreateOrderB2CDto request)
     {
@@ -85,9 +85,9 @@ public class OrdersController : ControllerBase
         }
     }
 
-    /// Tạo đơn hàng B2B (Member - nhiều địa chỉ) - SWD Compliant
+    /// Tạo đơn hàng B2B (Member - nhiều địa chỉ) - Compliant
     [HttpPost("b2b")]
-    [Authorize] // B2B BẮT BUỘC đăng nhập theo SWD
+    [Authorize] // B2B BẮT BUỘC đăng nhập
     public async Task<IActionResult> CreateB2BOrder([FromBody] CreateOrderB2BDto request)
     {
         try
@@ -148,17 +148,6 @@ public class OrdersController : ControllerBase
             });
         }
     }
-                message = "Order placed successfully"
-            });
-        }
-        catch (Exception ex)
-        {
-            return BadRequest(new {
-                success = false,
-                message = ex.Message
-            });
-        }
-    }
 
     /// Track đơn hàng cho guest (không cần đăng nhập)
     [HttpGet("track")]
@@ -183,7 +172,7 @@ public class OrdersController : ControllerBase
     /// Lấy danh sách đơn hàng (cho authenticated user)
     [HttpGet("my-orders")]
     // [Authorize] // Uncomment khi implement authentication
-    public async Task<IActionResult> GetMyOrders([FromQuery] int skip = 0, [FromQuery] int take = 20)
+    public IActionResult GetMyOrders([FromQuery] int skip = 0, [FromQuery] int take = 20)
     {
         try
         {
@@ -197,18 +186,18 @@ public class OrdersController : ControllerBase
         }
     }
 
-    /// Cập nhật trạng thái đơn hàng - CHỈ STAFF theo SWD
+    /// Cập nhật trạng thái đơn hàng - CHỈ STAFF
     [Authorize(Roles = "STAFF")]
     [HttpPut("{orderId}/status")]
     public async Task<IActionResult> UpdateOrderStatus(string orderId, [FromBody] UpdateOrderStatusDto request)
     {
         try
         {
-            // SWD: CHỈ STAFF được update status, Admin KHÔNG được
+            //CHỈ STAFF được update status, Admin KHÔNG được
             var userRole = User.FindFirst("role")?.Value ?? "MEMBER";
             if (userRole != "STAFF")
             {
-                return Forbid("Only STAFF can update order status. Admin cannot modify orders per SWD requirements.");
+                return Forbid("Only STAFF can update order status. Admin cannot modify orders.");
             }
 
             var updatedBy = User.FindFirst("name")?.Value ?? User.Identity?.Name ?? "Staff";
@@ -236,7 +225,7 @@ public class OrdersController : ControllerBase
         }
     }
     
-    /// Validate Mix & Match Rules - Public endpoint theo SWD
+    /// Validate Mix & Match Rules - Public endpoint
     [HttpPost("validate-mixmatch/{customBoxId}")]
     public async Task<IActionResult> ValidateMixMatchRules(string customBoxId)
     {

@@ -11,19 +11,19 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Thêm Controllers
+//Thêm Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options => {
         options.JsonSerializerOptions.PropertyNamingPolicy = null; // Giữ nguyên tên thuộc tính như trong C#
     });
 
-// 2. Cấu hình OpenAPI .NET 9 với JWT Support
+//Cấu hình OpenAPI .NET 9 với JWT Support
 builder.Services.AddOpenApi();
 
-// 3. Memory Cache for OTP
+//Memory Cache for OTP
 builder.Services.AddMemoryCache();
 
-// 4. Cấu hình MongoDB với Entity Framework Core
+//Cấu hình MongoDB với Entity Framework Core
 builder.Services.AddDbContext<ShopHangTetDbContext>(options =>
 {
     var connectionString = builder.Configuration.GetConnectionString("MongoConnection");
@@ -31,7 +31,7 @@ builder.Services.AddDbContext<ShopHangTetDbContext>(options =>
     options.UseMongoDB(connectionString ?? "mongodb://localhost:27017", databaseName);
 });
 
-// 5. Đăng ký MongoDB Driver (cho Repositories)
+//Đăng ký MongoDB Driver (cho Repositories)
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
     var connectionString = builder.Configuration.GetConnectionString("MongoConnection") ?? "mongodb://localhost:27017";
@@ -44,8 +44,9 @@ builder.Services.AddScoped<IMongoDatabase>(sp =>
     return client.GetDatabase("ShopHangTetDb");
 });
 
-// 6. Authentication & Authorization với JWT
-var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] ?? "ShopHangTet_DefaultSecretKey_2024_MongoDB_VerySecureKey123456789";
+//Authentication & Authorization với JWT
+var jwtSecretKey = builder.Configuration["Jwt:SecretKey"] 
+    ?? throw new InvalidOperationException("JWT SecretKey is required. Please configure Jwt:SecretKey in appsettings.json or environment variables.");
 var key = Encoding.UTF8.GetBytes(jwtSecretKey);
 
 builder.Services.AddAuthentication(options =>
@@ -70,7 +71,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// 7. Cấu hình CORS (Cho phép Vue.js truy cập API)
+//Cấu hình CORS (Cho phép Vue.js truy cập API)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp",
@@ -80,15 +81,15 @@ builder.Services.AddCors(options =>
                         .AllowCredentials());
 });
 
-// 8. Đăng ký Core Services
+//Đăng ký Core Services
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-// 9. Đăng ký Repository Dependencies
+//Đăng ký Repository Dependencies
 builder.Services.AddScoped<IDeliverySlotRepository, DeliverySlotRepository>();
 
-// 10. Đăng ký Application Services
+//Đăng ký Application Services
 builder.Services.AddScoped<IOrderService, OrderService>();
 // builder.Services.AddScoped<OrderService>();
 
@@ -103,7 +104,7 @@ builder.Services.AddScoped<IOrderService, OrderService>();
 
 var app = builder.Build();
 
-// 11. Cấu hình Pipeline cho môi trường Development
+//Cấu hình Pipeline cho môi trường Development
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi(); // Tạo file openapi.json
@@ -127,7 +128,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// 12. Kích hoạt Middleware
+//Kích hoạt Middleware
 app.UseCors("AllowVueApp");
 app.UseHttpsRedirection();
 

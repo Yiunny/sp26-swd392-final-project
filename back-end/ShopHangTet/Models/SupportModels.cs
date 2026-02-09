@@ -3,9 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace ShopHangTet.Models
 {
-    /// <summary>
     /// Review Model - Đánh giá sản phẩm (Member only)
-    /// </summary>
     public class Review
     {
         [BsonId]
@@ -34,9 +32,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// Chat Session Model - Hỗ trợ khách hàng
-    /// </summary>
     public class ChatSession
     {
         [BsonId]
@@ -81,9 +77,7 @@ namespace ShopHangTet.Models
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// System Config Model - Cấu hình hệ thống
-    /// </summary>
     public class SystemConfig
     {
         [BsonId]
@@ -124,9 +118,7 @@ namespace ShopHangTet.Models
         public bool EnableSsl { get; set; } = true;
     }
 
-    /// <summary>
     /// OTP Storage Model - For email verification
-    /// </summary>
     public class OtpRecord
     {
         [BsonId]
@@ -152,102 +144,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Order Delivery - Theo dõi giao hàng từng địa chỉ
-    /// </summary>
-    public class OrderDelivery
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
-
-        [BsonElement("orderId")]
-        public string OrderId { get; set; } = string.Empty;
-
-        [BsonElement("addressIndex")]
-        public int AddressIndex { get; set; }
-
-        [BsonElement("status")]
-        public string Status { get; set; } = "PENDING"; // PENDING, SHIPPED, DELIVERED
-
-        [BsonElement("shippedAt")]
-        public DateTime? ShippedAt { get; set; }
-
-        [BsonElement("deliveredAt")]
-        public DateTime? DeliveredAt { get; set; }
-
-        [BsonElement("trackingNumber")]
-        public string? TrackingNumber { get; set; }
-
-        [BsonElement("notes")]
-        public string Notes { get; set; } = string.Empty;
-
-        [BsonElement("createdAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Order Delivery Item - Sản phẩm theo từng địa chỉ giao hàng (B2B)
-    /// </summary>
-    public class OrderDeliveryItem
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
-
-        [BsonElement("orderDeliveryId")]
-        public string OrderDeliveryId { get; set; } = string.Empty;
-
-        [BsonElement("orderItemId")]
-        public string OrderItemId { get; set; } = string.Empty;
-
-        [BsonElement("quantity")]
-        public int Quantity { get; set; }
-    }
-
-    /// <summary>
-    /// Inventory Log - Lịch sử thay đổi tồn kho
-    /// </summary>
-    public class InventoryLog
-    {
-        [BsonId]
-        [BsonRepresentation(BsonType.ObjectId)]
-        public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
-
-        [BsonElement("productId")]
-        public string ProductId { get; set; } = string.Empty;
-
-        [BsonElement("productType")]
-        public string ProductType { get; set; } = string.Empty; // ITEM, GIFTBOX
-
-        [BsonElement("changeType")]
-        public string ChangeType { get; set; } = string.Empty; // ORDER, RESTOCK, ADJUSTMENT
-
-        [BsonElement("quantity")]
-        public int Quantity { get; set; }
-
-        [BsonElement("previousStock")]
-        public int PreviousStock { get; set; }
-
-        [BsonElement("newStock")]
-        public int NewStock { get; set; }
-
-        [BsonElement("orderId")]
-        public string? OrderId { get; set; }
-
-        [BsonElement("updatedBy")]
-        public string UpdatedBy { get; set; } = string.Empty;
-
-        [BsonElement("notes")]
-        public string Notes { get; set; } = string.Empty;
-
-        [BsonElement("createdAt")]
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Inventory Log Model - Theo SWD (CHỈ trigger khi Order -> PREPARING)
-    /// </summary>
+    /// Inventory Log Model - CHỈ trigger khi Order -> PREPARING
     public class InventoryLog
     {
         [BsonId]
@@ -255,24 +152,21 @@ namespace ShopHangTet.Models
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         [BsonElement("orderId")]
-        public string OrderId { get; set; } = string.Empty; // FK to Order theo SWD
+        public string OrderId { get; set; } = string.Empty; // FK to Order
 
         [BsonElement("itemId")]
-        public string ItemId { get; set; } = string.Empty; // FK to Item theo SWD
-
+        public string ItemId { get; set; } = string.Empty; // FK to Item
         [BsonElement("quantity")]
         public int Quantity { get; set; } // Số lượng (âm cho DEDUCT)
 
         [BsonElement("action")]
-        public string Action { get; set; } = "DEDUCT"; // CHỈ DEDUCT theo SWD
+        public string Action { get; set; } = "DEDUCT"; // CHỈ DEDUCT
 
         [BsonElement("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Order Delivery Model - B2B Multi-address theo SWD
-    /// </summary>
+    /// Order Delivery Model - B2B Multi-address
     public class OrderDelivery
     {
         [BsonId]
@@ -292,9 +186,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// Order Delivery Item Model - Phân bổ OrderItem theo địa chỉ (B2B)
-    /// </summary>
     public class OrderDeliveryItem
     {
         [BsonId]

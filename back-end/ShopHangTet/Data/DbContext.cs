@@ -20,12 +20,12 @@ namespace ShopHangTet.Data
     public DbSet<Collection> Collections { get; set; }
     public DbSet<GiftBox> GiftBoxes { get; set; }
     public DbSet<Item> Items { get; set; }
+    public DbSet<Tag> Tags { get; set; }
 
     // Cart & Mix & Match
     public DbSet<Cart> Carts { get; set; }
     public DbSet<CartItem> CartItems { get; set; }
     public DbSet<CustomBox> CustomBoxes { get; set; }
-    public DbSet<CustomBoxItem> CustomBoxItems { get; set; }
 
     // Orders
     public DbSet<OrderModel> Orders { get; set; }
@@ -42,6 +42,9 @@ namespace ShopHangTet.Data
     public DbSet<ChatMessage> ChatMessages { get; set; }
     public DbSet<SystemConfig> SystemConfigs { get; set; }
 
+    // Delivery Slots
+    public DbSet<DeliverySlot> DeliverySlots { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -53,11 +56,11 @@ namespace ShopHangTet.Data
         modelBuilder.Entity<Collection>();
         modelBuilder.Entity<GiftBox>();
         modelBuilder.Entity<Item>();
+        modelBuilder.Entity<Tag>();
 
         modelBuilder.Entity<Cart>();
         modelBuilder.Entity<CartItem>();
         modelBuilder.Entity<CustomBox>();
-        modelBuilder.Entity<CustomBoxItem>();
 
         modelBuilder.Entity<OrderModel>();
         modelBuilder.Entity<OrderItem>();
@@ -70,6 +73,11 @@ namespace ShopHangTet.Data
         modelBuilder.Entity<ChatSession>();
         modelBuilder.Entity<ChatMessage>();
         modelBuilder.Entity<SystemConfig>();
+        modelBuilder.Entity<DeliverySlot>();
+
+        // Owned collections for embedded items
+        modelBuilder.Entity<GiftBox>().OwnsMany(x => x.Items);
+        modelBuilder.Entity<CustomBox>().OwnsMany(x => x.Items);
     }
 }
 }

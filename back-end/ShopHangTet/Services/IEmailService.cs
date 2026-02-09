@@ -3,9 +3,7 @@ using ShopHangTet.Models;
 
 namespace ShopHangTet.Services
 {
-    /// <summary>
     /// Interface cho Email Service - gửi email xác nhận và thông báo
-    /// </summary>
     public interface IEmailService
     {
         Task<bool> SendEmailAsync(string to, string subject, string body, bool isHtml = true);

@@ -3,9 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace ShopHangTet.Models
 {
-    /// <summary>
     /// Collection Model - Bộ sưu tập quà Tết
-    /// </summary>
     public class Collection
     {
         [BsonId]
@@ -28,9 +26,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// Tag Model - Thẻ phân loại ý nghĩa quà tặng
-    /// </summary>
     public class Tag
     {
         [BsonId]
@@ -50,9 +46,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// Gift Box Model - Hộp quà có sẵn
-    /// </summary>
     public class GiftBox
     {
         [BsonId]
@@ -96,9 +90,7 @@ namespace ShopHangTet.Models
         public int Quantity { get; set; }
     }
 
-    /// <summary>
     /// Item Model - Thành phần Mix & Match
-    /// </summary>
     public class Item
     {
         [BsonId]
@@ -127,9 +119,7 @@ namespace ShopHangTet.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 
-    /// <summary>
     /// Custom Box Model - Hộp quà Mix & Match
-    /// </summary>
     public class CustomBox
     {
         [BsonId]
