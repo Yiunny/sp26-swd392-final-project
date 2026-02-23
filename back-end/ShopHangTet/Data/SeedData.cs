@@ -16,6 +16,9 @@ public static class SeedData
             await SeedTagsAsync(context);
             await SeedCollectionsAsync(context);
             await SeedItemsAsync(context);
+
+            await context.SaveChangesAsync();
+
             await SeedGiftBoxesAsync(context);
             await SeedDeliverySlotsAsync(context);
 
