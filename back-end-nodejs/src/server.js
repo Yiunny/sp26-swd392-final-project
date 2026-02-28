@@ -1,4 +1,20 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env theo environment (tương tự appsettings.{Environment}.json)
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = resolve(__dirname, '..');
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFile = resolve(rootDir, `.env.${nodeEnv}`);
+if (existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+  console.log(`📦 Loaded environment: .env.${nodeEnv}`);
+}
+// Load .env gốc (các giá trị chưa có sẽ được bổ sung)
+dotenv.config({ path: resolve(rootDir, '.env') });
+
 import express from 'express';
 import cors from 'cors';
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -19,7 +35,7 @@ import {
 
 async function main() {
   const app = express();
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 5001;
 
   // ========== Middleware ==========
   app.use(express.json());

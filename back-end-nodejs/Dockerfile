@@ -29,13 +29,13 @@ COPY src ./src
 # Chuyển sang non-root user
 USER appuser
 
-EXPOSE 5000
+EXPOSE 5001
 
 ENV NODE_ENV=production
-ENV PORT=5000
+ENV PORT=5001
 
 # Healthcheck endpoint
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://localhost:5000/api/system/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+  CMD node -e "fetch('http://localhost:5001/api/system/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
 
 CMD ["node", "src/server.js"]

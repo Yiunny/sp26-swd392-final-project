@@ -44,7 +44,11 @@ back-end-nodejs/
 │   └── data/                # Database connection & seed
 │       ├── dbContext.js
 │       └── seedData.js
-├── .env
+├── .env                  # Config mặc định
+├── .env.development      # Config Development (tương ứng appsettings.Development.json)
+├── .env.production       # Config Production (tương ứng appsettings.Production.json)
+├── .gitignore
+├── .dockerignore
 ├── Dockerfile
 ├── package.json
 └── README.md
@@ -75,19 +79,44 @@ back-end-nodejs/
 # Cài đặt dependencies
 npm install
 
-# Chạy development (auto-reload)
+# Chạy development (auto-reload, load .env.development)
 npm run dev
 
-# Chạy production
-npm start
+# Chạy production (load .env.production)
+NODE_ENV=production npm start
 ```
+
+## Environment Config
+
+Hệ thống load `.env` theo cơ chế giống `appsettings.{Environment}.json` bên C#:
+
+1. `.env.{NODE_ENV}` (VD: `.env.development`, `.env.production`) — ưu tiên trước
+2. `.env` — giá trị mặc định, bổ sung các biến chưa có
+
+### Các biến quan trọng
+
+| Biến | Mô tả | Mặc định |
+|------|--------|----------|
+| `MONGO_URI` | MongoDB connection string | `mongodb://localhost:27017` |
+| `DB_NAME` | Tên database | `ShopHangTetDb` |
+| `JWT_SECRET_KEY` | Secret key cho JWT | *(xem .env)* |
+| `SMTP_HOST` | SMTP server | `smtp.gmail.com` |
+| `SMTP_PORT` | SMTP port | `587` |
+| `SMTP_USERNAME` | Email username | *(xem .env)* |
+| `SMTP_PASSWORD` | Email password | *(xem .env)* |
+| `PORT` | Server port | `5001` |
+| `NODE_ENV` | Environment | `development` |
+| `CORS_ORIGINS` | Danh sách CORS (phân cách `,`) | `http://localhost:5173,http://localhost:3000` |
 
 ## Docker
 
 ```bash
+# Build image
 docker build -t shop-hang-tet-nodejs .
-docker run -p 5000:5000 --env-file .env shop-hang-tet-nodejs
-```
 
-## Environment Variables
-Xem file `.env` để cấu hình MongoDB, JWT, SMTP, v.v.
+# Run container  
+docker run -p 5001:5001 --env-file .env shop-hang-tet-nodejs
+
+# Chạy cùng docker-compose (từ thư mục gốc project)
+docker compose up backend-nodejs
+```
