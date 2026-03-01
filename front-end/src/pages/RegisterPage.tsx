@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import registerBg from "../assets/register-bg.png";
+import { authService } from "../services/authService";
+import type { ApiError } from "../types/auth";
 
 const registerSchema = Yup.object({
     fullname: Yup.string()
@@ -23,8 +25,11 @@ const registerSchema = Yup.object({
 });
 
 export default function RegisterPage() {
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [serverError, setServerError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const formik = useFormik({
         initialValues: {
@@ -35,9 +40,25 @@ export default function RegisterPage() {
             confirmPassword: "",
         },
         validationSchema: registerSchema,
-        onSubmit: (values) => {
-            console.log("Register:", values);
-            // TODO: call register API
+        onSubmit: async (values) => {
+            setServerError(null);
+            setIsLoading(true);
+            try {
+                await authService.register({
+                    email: values.email,
+                    password: values.password,
+                    fullName: values.fullname,
+                    phone: values.phone || null,
+                });
+                navigate("/login", {
+                    state: { message: "Đăng ký thành công! Vui lòng đăng nhập." },
+                });
+            } catch (error) {
+                const apiError = error as ApiError;
+                setServerError(apiError.message || "Đăng ký thất bại. Vui lòng thử lại.");
+            } finally {
+                setIsLoading(false);
+            }
         },
     });
 
@@ -75,6 +96,13 @@ export default function RegisterPage() {
                     <p className="text-sm text-gray-500 mb-8">
                         Gia nhập cộng đồng tinh hoa để nhận ưu đãi Tết đặc quyền.
                     </p>
+
+                    {/* Server Error */}
+                    {serverError && (
+                        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                            {serverError}
+                        </div>
+                    )}
 
                     {/* Form */}
                     <form onSubmit={formik.handleSubmit} className="space-y-5">
@@ -236,9 +264,16 @@ export default function RegisterPage() {
                         {/* Submit */}
                         <button
                             type="submit"
-                            className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white uppercase tracking-wider shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors cursor-pointer"
+                            disabled={isLoading}
+                            className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-bold text-white uppercase tracking-wider shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            Đăng ký ngay
+                            {isLoading && (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            )}
+                            {isLoading ? "Đang xử lý..." : "Đăng ký ngay"}
                         </button>
                     </form>
 

@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import loginBg from "../assets/login-bg.png";
+import { authService } from "../services/authService";
+import type { ApiError } from "../types/auth";
 
 const loginSchema = Yup.object({
     email: Yup.string()
@@ -13,14 +15,33 @@ const loginSchema = Yup.object({
 });
 
 export default function LoginPage() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const successMessage = (location.state as { message?: string })?.message;
+
     const [showPassword, setShowPassword] = useState(false);
+    const [serverError, setServerError] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const formik = useFormik({
         initialValues: { email: "", password: "" },
         validationSchema: loginSchema,
-        onSubmit: (values) => {
-            console.log("Login:", values);
-            // TODO: call login API
+        onSubmit: async (values) => {
+            setServerError(null);
+            setIsLoading(true);
+            try {
+                const response = await authService.login({
+                    email: values.email,
+                    password: values.password,
+                });
+                localStorage.setItem("token", response.token);
+                navigate("/");
+            } catch (error) {
+                const apiError = error as ApiError;
+                setServerError(apiError.message || "Đăng nhập thất bại. Vui lòng thử lại.");
+            } finally {
+                setIsLoading(false);
+            }
         },
     });
 
@@ -84,6 +105,20 @@ export default function LoginPage() {
                         Đăng nhập để tiếp tục trải nghiệm dịch vụ quà tặng cao cấp.
                     </p>
 
+                    {/* Success message from register */}
+                    {successMessage && (
+                        <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+                            {successMessage}
+                        </div>
+                    )}
+
+                    {/* Server Error */}
+                    {serverError && (
+                        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                            {serverError}
+                        </div>
+                    )}
+
                     {/* Form */}
                     <form onSubmit={formik.handleSubmit} className="space-y-5">
                         {/* Email / Phone */}
@@ -97,8 +132,8 @@ export default function LoginPage() {
                                 placeholder="example@email.com"
                                 {...formik.getFieldProps("email")}
                                 className={`w-full rounded-lg border px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:ring-1 ${formik.touched.email && formik.errors.email
-                                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                                        : "border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                    ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                    : "border-gray-300 focus:border-red-500 focus:ring-red-500"
                                     }`}
                             />
                             {formik.touched.email && formik.errors.email && (
@@ -118,8 +153,8 @@ export default function LoginPage() {
                                     placeholder="Nhập mật khẩu của bạn"
                                     {...formik.getFieldProps("password")}
                                     className={`w-full rounded-lg border px-4 py-2.5 pr-11 text-sm text-gray-900 placeholder-gray-400 outline-none transition-colors focus:ring-1 ${formik.touched.password && formik.errors.password
-                                            ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                                            : "border-gray-300 focus:border-red-500 focus:ring-red-500"
+                                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
+                                        : "border-gray-300 focus:border-red-500 focus:ring-red-500"
                                         }`}
                                 />
                                 <button
@@ -164,9 +199,16 @@ export default function LoginPage() {
                         {/* Submit button */}
                         <button
                             type="submit"
-                            className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors cursor-pointer"
+                            disabled={isLoading}
+                            className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         >
-                            Đăng nhập
+                            {isLoading && (
+                                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            )}
+                            {isLoading ? "Đang xử lý..." : "Đăng nhập"}
                         </button>
                     </form>
 
