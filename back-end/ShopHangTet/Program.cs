@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
+using DotNetEnv;
 using MongoDB.Driver;
 using ShopHangTet.Data;
 using ShopHangTet.Repositories;
@@ -10,6 +10,20 @@ using ShopHangTet.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var envFilePath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+if (File.Exists(envFilePath))
+{
+    Env.Load(envFilePath);
+}
+
+var mongoConnectionString = Environment.GetEnvironmentVariable("MONGODB_CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("MongoConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("MongoDB connection string is required. Set MONGODB_CONNECTION_STRING or ConnectionStrings:MongoConnection/DefaultConnection.");
+var mongoDatabaseName = Environment.GetEnvironmentVariable("MONGODB_DATABASE")
+    ?? builder.Configuration["Mongo:DatabaseName"]
+    ?? "ShopHangTetDb";
 
 //Thêm Controllers
 builder.Services.AddControllers()
@@ -26,22 +40,21 @@ builder.Services.AddMemoryCache();
 //Cấu hình MongoDB với Entity Framework Core
 builder.Services.AddDbContext<ShopHangTetDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MongoConnection");
-    var databaseName = "ShopHangTetDb";
-    options.UseMongoDB(connectionString ?? "mongodb://localhost:27017", databaseName);
+    options.UseMongoDB(mongoConnectionString, mongoDatabaseName);
 });
 
 //Đăng ký MongoDB Driver (cho Repositories)
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("MongoConnection") ?? "mongodb://localhost:27017";
-    return new MongoClient(connectionString);
+    var settings = MongoClientSettings.FromConnectionString(mongoConnectionString);
+    settings.ServerApi = new ServerApi(ServerApiVersion.V1);
+    return new MongoClient(settings);
 });
 
 builder.Services.AddScoped<IMongoDatabase>(sp =>
 {
     var client = sp.GetRequiredService<IMongoClient>();
-    return client.GetDatabase("ShopHangTetDb");
+    return client.GetDatabase(mongoDatabaseName);
 });
 
 //Authentication & Authorization với JWT
@@ -138,6 +151,17 @@ app.UseAuthorization();
 app.MapControllers();
 
 // Seed data
-await SeedData.InitializeAsync(app);
+var seedEnabledConfig = builder.Configuration.GetValue<bool?>("Seed:Enabled");
+var seedEnabled = seedEnabledConfig;
+
+if (seedEnabled is null && bool.TryParse(Environment.GetEnvironmentVariable("SEED_ENABLED"), out var seedEnabledFromEnv))
+{
+    seedEnabled = seedEnabledFromEnv;
+}
+
+if (seedEnabled ?? true)
+{
+    await SeedData.InitializeAsync(app);
+}
 
 await app.RunAsync();

@@ -3,6 +3,7 @@ using ShopHangTet.Services;
 using ShopHangTet.DTOs;
 using ShopHangTet.Models;
 using System.Text.RegularExpressions;
+using System.Net;
 
 namespace ShopHangTet.Controllers;
 
@@ -11,9 +12,11 @@ namespace ShopHangTet.Controllers;
 [Route("api/[controller]")]
 public class PaymentController : ControllerBase
 {
+    private static readonly Regex OrderCodeRegex = new(@"\bSHT\d{3,10}\b", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     private readonly IOrderService _orderService;
     private readonly ILogger<PaymentController> _logger;
-     private readonly IConfiguration _configuration;
+    private readonly IConfiguration _configuration;
 
     public PaymentController(IOrderService orderService, ILogger<PaymentController> logger, IConfiguration configuration)
     {
@@ -27,7 +30,7 @@ public class PaymentController : ControllerBase
     public async Task<IActionResult> ReceiveWebhook([FromBody] SePayWebhookDto data)
     {
         // Bảo mật: Kiểm tra SePay Webhook Token
-        var configuredToken = _configuration["SePay:WebhookToken"];
+        var configuredToken = GetConfigValue("SePay:WebhookToken", "SEPAY_WEBHOOK_TOKEN");
         if (!string.IsNullOrEmpty(configuredToken))
         {
             var authHeader = Request.Headers["Authorization"].ToString();
@@ -57,22 +60,14 @@ public class PaymentController : ControllerBase
                 return Ok(new { status = 200 });
             }
 
-            // 2. Guard: Content null/empty → không có mã đơn hàng
-            if (string.IsNullOrWhiteSpace(data.Content))
-            {
-                _logger.LogWarning("SePay webhook: Content is empty, cannot extract order code");
-                return Ok(new { status = 200 });
-            }
-
-            // 3. Dùng Regex để tìm mã đơn hàng (VD: SHT2602261234) trong nội dung chuyển khoản
-            var match = Regex.Match(data.Content, @"SHT\d+", RegexOptions.IgnoreCase);
-            if (!match.Success)
+            // 2. Ưu tiên lấy mã đơn từ field code; fallback parse từ content
+            var orderCode = ExtractOrderCode(data);
+            if (string.IsNullOrWhiteSpace(orderCode))
             {
                 _logger.LogWarning("No order code found in transfer content: {Content}", data.Content);
-                return Ok(new { status = 200 });
+                return Ok(new { success = true, status = 200 });
             }
 
-            string orderCode = match.Value.ToUpper();
             _logger.LogInformation("Found order code: {OrderCode}, Amount: {Amount}", orderCode, data.TransferAmount);
 
             // 4. Gọi service xác nhận thanh toán và cập nhật trạng thái + trừ kho
@@ -84,19 +79,47 @@ public class PaymentController : ControllerBase
                 _logger.LogWarning("Payment confirmation failed for order: {OrderCode} (not found, wrong status, or insufficient amount)", orderCode);
 
             // Luôn trả về 200 để SePay dừng gửi lại
-            return Ok(new { status = 200 });
+            return Ok(new { success = true, status = 200 });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing SePay webhook");
             // Vẫn trả 200 để tránh SePay retry liên tục khi có lỗi nội bộ
-            return Ok(new { status = 200 });
+            return Ok(new { success = true, status = 200 });
         }
     }
 
-    /// <summary>
+    /// Tạo QR SePay cho đơn hàng với nội dung là mã đơn SHT... và số tiền chính xác.
+    [HttpGet("create-qr/{orderCode}")]
+    public async Task<IActionResult> CreateQr(string orderCode)
+    {
+        var order = await _orderService.GetOrderByCodeAsync(orderCode);
+        if (order == null)
+        {
+            return NotFound(ApiResponse<string>.ErrorResult("Order not found"));
+        }
+
+        var bankAccount = GetConfigValue("SePay:BankAccountNumber", "SEPAY_BANK_ACCOUNT_NUMBER");
+        var bankName = GetConfigValue("SePay:BankName", "SEPAY_BANK_NAME");
+
+        if (string.IsNullOrWhiteSpace(bankAccount) || string.IsNullOrWhiteSpace(bankName))
+        {
+            return BadRequest(ApiResponse<string>.ErrorResult("Missing SePay bank config: SePay:BankAccountNumber hoặc SePay:BankName"));
+        }
+
+        var qrUrl = $"https://qr.sepay.vn/img?acc={WebUtility.UrlEncode(bankAccount)}&bank={WebUtility.UrlEncode(bankName)}&amount={order.TotalAmount:0}&des={WebUtility.UrlEncode(order.OrderCode)}";
+
+        return Ok(ApiResponse<object>.SuccessResult(new
+        {
+            orderCode = order.OrderCode,
+            amount = order.TotalAmount,
+            bankAccount,
+            bankName,
+            qrUrl
+        }, "Tạo QR thành công"));
+    }
+
     /// API để Frontend polling mỗi 3 giây kiểm tra trạng thái thanh toán đơn hàng.
-    /// </summary>
     [HttpGet("check-status/{orderCode}")]
     public async Task<IActionResult> CheckPaymentStatus(string orderCode)
     {
@@ -123,5 +146,33 @@ public class PaymentController : ControllerBase
             _logger.LogError(ex, "Error checking payment status for order: {OrderCode}", orderCode);
             return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
         }
+    }
+
+    private static string? ExtractOrderCode(SePayWebhookDto data)
+    {
+        if (!string.IsNullOrWhiteSpace(data.Code))
+        {
+            var matchFromCode = OrderCodeRegex.Match(data.Code);
+            if (matchFromCode.Success)
+            {
+                return matchFromCode.Value.ToUpper();
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(data.Content))
+        {
+            var matchFromContent = OrderCodeRegex.Match(data.Content);
+            if (matchFromContent.Success)
+            {
+                return matchFromContent.Value.ToUpper();
+            }
+        }
+
+        return null;
+    }
+
+    private string? GetConfigValue(string key, string envKey)
+    {
+        return _configuration[key] ?? Environment.GetEnvironmentVariable(envKey);
     }
 }

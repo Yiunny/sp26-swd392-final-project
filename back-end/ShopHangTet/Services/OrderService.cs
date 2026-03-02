@@ -11,6 +11,8 @@ namespace ShopHangTet.Services
     /// OrderService - Quản lý tạo và xử lý đơn hàng
     public class OrderService : IOrderService
     {
+        private static readonly TimeSpan PaymentConfirmationWindow = TimeSpan.FromMinutes(10);
+
         private readonly ShopHangTetDbContext _context;
         private readonly IDeliverySlotRepository _slotRepo;
         private readonly ILogger<OrderService> _logger;
@@ -107,6 +109,14 @@ namespace ShopHangTet.Services
             {
                 _logger.LogWarning("ConfirmPayment: Order {OrderCode} is not in PAYMENT_CONFIRMING status (current: {Status})",
                     orderCode, order.Status);
+                return false;
+            }
+
+            var orderAge = DateTime.UtcNow - order.CreatedAt;
+            if (orderAge > PaymentConfirmationWindow)
+            {
+                _logger.LogWarning("ConfirmPayment: Order {OrderCode} exceeded payment window ({Minutes} minutes). CreatedAt={CreatedAt}",
+                    orderCode, PaymentConfirmationWindow.TotalMinutes, order.CreatedAt);
                 return false;
             }
 
