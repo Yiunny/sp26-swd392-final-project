@@ -16,7 +16,11 @@ public static class SeedData
             await SeedTagsAsync(context);
             await SeedCollectionsAsync(context);
             await SeedItemsAsync(context);
+
+            await context.SaveChangesAsync();
+
             await SeedGiftBoxesAsync(context);
+            await SeedTestDatasetAsync(context);
             await SeedDeliverySlotsAsync(context);
 
             await context.SaveChangesAsync();
@@ -32,8 +36,6 @@ public static class SeedData
 
     private static async Task SeedTagsAsync(ShopHangTetDbContext context)
     {
-        if (await context.Tags.AnyAsync()) return;
-
         var tags = new List<Tag>
         {
             new Tag { Name = "Gia đình", Type = "RECIPIENT", IsActive = true },
@@ -53,13 +55,26 @@ public static class SeedData
             new Tag { Name = "Tết Nguyên Đán", Type = "OCCASION", IsActive = true }
         };
 
-        await context.Tags.AddRangeAsync(tags);
+        var existingKeys = await context.Tags
+            .Select(t => new { t.Name, t.Type })
+            .ToListAsync();
+
+        var existingSet = existingKeys
+            .Select(x => $"{x.Name}|{x.Type}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var missingTags = tags
+            .Where(t => !existingSet.Contains($"{t.Name}|{t.Type}"))
+            .ToList();
+
+        if (missingTags.Count > 0)
+        {
+            await context.Tags.AddRangeAsync(missingTags);
+        }
     }
 
     private static async Task SeedCollectionsAsync(ShopHangTetDbContext context)
     {
-        if (await context.Collections.AnyAsync()) return;
-
         var collections = new List<Collection>
         {
             new Collection
@@ -99,13 +114,23 @@ public static class SeedData
             }
         };
 
-        await context.Collections.AddRangeAsync(collections);
+        var existingNames = await context.Collections
+            .Select(c => c.Name)
+            .ToListAsync();
+
+        var existingSet = existingNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingCollections = collections
+            .Where(c => !existingSet.Contains(c.Name))
+            .ToList();
+
+        if (missingCollections.Count > 0)
+        {
+            await context.Collections.AddRangeAsync(missingCollections);
+        }
     }
 
     private static async Task SeedItemsAsync(ShopHangTetDbContext context)
     {
-        if (await context.Items.AnyAsync()) return;
-
         var items = new List<Item>
         {
             // NHOM HAT - DINH DUONG (10)
@@ -171,14 +196,24 @@ public static class SeedData
             new Item { Name = "Lạp xưởng tươi", Category = ItemCategory.FOOD, Price = 160000, StockQuantity = 1000, IsActive = true }
         };
 
-        await context.Items.AddRangeAsync(items);
-        Console.WriteLine($"----> Seeded {items.Count} Items");
+        var existingNames = await context.Items
+            .Select(i => i.Name)
+            .ToListAsync();
+
+        var existingSet = existingNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingItems = items
+            .Where(i => !existingSet.Contains(i.Name))
+            .ToList();
+
+        if (missingItems.Count > 0)
+        {
+            await context.Items.AddRangeAsync(missingItems);
+            Console.WriteLine($"----> Seeded {missingItems.Count} Items");
+        }
     }
 
     private static async Task SeedGiftBoxesAsync(ShopHangTetDbContext context)
     {
-        if (await context.GiftBoxes.AnyAsync()) return;
-
         var collections = await context.Collections.ToListAsync();
         var tags = await context.Tags.ToListAsync();
         var items = await context.Items.ToListAsync();
@@ -334,50 +369,127 @@ public static class SeedData
                 "Khô bò", "Hạt macca", "Trà lài", "Nho khô")
         };
 
-        await context.GiftBoxes.AddRangeAsync(giftBoxes);
-        Console.WriteLine($"----> Seeded {giftBoxes.Count} GiftBoxes");
+        var existingNames = await context.GiftBoxes
+            .Select(g => g.Name)
+            .ToListAsync();
+
+        var existingSet = existingNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missingGiftBoxes = giftBoxes
+            .Where(g => !existingSet.Contains(g.Name))
+            .ToList();
+
+        if (missingGiftBoxes.Count > 0)
+        {
+            await context.GiftBoxes.AddRangeAsync(missingGiftBoxes);
+            Console.WriteLine($"----> Seeded {missingGiftBoxes.Count} GiftBoxes");
+        }
     }
 
     private static async Task SeedDeliverySlotsAsync(ShopHangTetDbContext context)
     {
-        if (await context.DeliverySlots.AnyAsync()) return;
-
         var slots = new List<DeliverySlot>();
-        var startDate = new DateTime(2026, 1, 20);
+        var startDate = DateTime.UtcNow.Date;
+        var existingSlots = await context.DeliverySlots
+            .Select(s => new { s.DeliveryDate, s.TimeSlot })
+            .ToListAsync();
+
+        var existingSet = existingSlots
+            .Select(x => $"{x.DeliveryDate:yyyy-MM-dd}|{x.TimeSlot}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         for (int day = 0; day < 10; day++)
         {
             var date = startDate.AddDays(day);
+            var dateKey = date.ToString("yyyy-MM-dd");
 
-            slots.Add(new DeliverySlot
+            if (!existingSet.Contains($"{dateKey}|8AM-12PM"))
             {
-                DeliveryDate = date,
-                TimeSlot = "8AM-12PM",
-                MaxOrdersPerSlot = 50,
-                CurrentOrderCount = 0,
-                IsLocked = false
-            });
+                slots.Add(new DeliverySlot
+                {
+                    DeliveryDate = date,
+                    TimeSlot = "8AM-12PM",
+                    MaxOrdersPerSlot = 50,
+                    CurrentOrderCount = 0,
+                    IsLocked = false
+                });
+            }
 
-            slots.Add(new DeliverySlot
+            if (!existingSet.Contains($"{dateKey}|1PM-5PM"))
             {
-                DeliveryDate = date,
-                TimeSlot = "1PM-5PM",
-                MaxOrdersPerSlot = 50,
-                CurrentOrderCount = 0,
-                IsLocked = false
-            });
+                slots.Add(new DeliverySlot
+                {
+                    DeliveryDate = date,
+                    TimeSlot = "1PM-5PM",
+                    MaxOrdersPerSlot = 50,
+                    CurrentOrderCount = 0,
+                    IsLocked = false
+                });
+            }
 
-            slots.Add(new DeliverySlot
+            if (!existingSet.Contains($"{dateKey}|6PM-9PM"))
             {
-                DeliveryDate = date,
-                TimeSlot = "6PM-9PM",
-                MaxOrdersPerSlot = 30,
-                CurrentOrderCount = 0,
-                IsLocked = false
-            });
+                slots.Add(new DeliverySlot
+                {
+                    DeliveryDate = date,
+                    TimeSlot = "6PM-9PM",
+                    MaxOrdersPerSlot = 30,
+                    CurrentOrderCount = 0,
+                    IsLocked = false
+                });
+            }
         }
 
-        await context.DeliverySlots.AddRangeAsync(slots);
-        Console.WriteLine($"----> Seeded {slots.Count} DeliverySlots");
+        if (slots.Count > 0)
+        {
+            await context.DeliverySlots.AddRangeAsync(slots);
+            Console.WriteLine($"----> Seeded {slots.Count} DeliverySlots");
+        }
+    }
+
+    private static async Task SeedTestDatasetAsync(ShopHangTetDbContext context)
+    {
+        var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        const string testGiftBoxName = "[TEST10K] QR Sandbox Box";
+
+        var existed = await context.GiftBoxes.AnyAsync(x => x.Name == testGiftBoxName);
+        if (existed)
+        {
+            return;
+        }
+
+        var collectionId = await context.Collections.Select(x => x.Id).FirstOrDefaultAsync();
+        var cheapestItem = await context.Items.OrderBy(x => x.Price).FirstOrDefaultAsync();
+
+        if (string.IsNullOrWhiteSpace(collectionId) || cheapestItem == null)
+        {
+            return;
+        }
+
+        var testGiftBox = new GiftBox
+        {
+            Name = testGiftBoxName,
+            Description = "Gift box test cho QR amount 10.000 VND",
+            Price = 10000,
+            CollectionId = collectionId,
+            Tags = new List<string>(),
+            Images = new List<string> { "seed-box.jpg" },
+            Items = new List<GiftBoxItem>
+            {
+                new GiftBoxItem
+                {
+                    ItemId = cheapestItem.Id,
+                    Quantity = 1
+                }
+            },
+            IsActive = true
+        };
+
+        await context.GiftBoxes.AddAsync(testGiftBox);
+        Console.WriteLine("----> Seeded test dataset: [TEST10K] QR Sandbox Box (10.000 VND)");
     }
 }

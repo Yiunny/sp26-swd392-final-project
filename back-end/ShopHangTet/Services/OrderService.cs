@@ -11,6 +11,8 @@ namespace ShopHangTet.Services
     /// OrderService - Quản lý tạo và xử lý đơn hàng
     public class OrderService : IOrderService
     {
+        private static readonly TimeSpan PaymentConfirmationWindow = TimeSpan.FromMinutes(10);
+
         private readonly ShopHangTetDbContext _context;
         private readonly IDeliverySlotRepository _slotRepo;
         private readonly ILogger<OrderService> _logger;
@@ -40,7 +42,9 @@ namespace ShopHangTet.Services
             return new OrderTrackingResult
             {
                 OrderCode = order.OrderCode,
-                Status = order.Status.ToString(),
+                Status = order.Status == OrderStatus.PAYMENT_EXPIRED_INTERNAL
+                    ? OrderStatus.PAYMENT_CONFIRMING.ToString()
+                    : order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 DeliveryDate = order.DeliveryDate,
                 TotalAmount = order.TotalAmount,
@@ -88,6 +92,68 @@ namespace ShopHangTet.Services
 
             await _context.SaveChangesAsync();
             return order;
+        }
+
+        /// Xác nhận thanh toán từ SePay webhook
+        public async Task<bool> ConfirmPaymentAsync(string orderCode, decimal amountPaid)
+        {
+            var order = await _context.Orders
+                .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
+
+            // Kiểm tra đơn tồn tại, đang chờ thanh toán, và đúng số tiền
+            if (order == null)
+            {
+                _logger.LogWarning("ConfirmPayment: Order {OrderCode} not found", orderCode);
+                return false;
+            }
+
+            if (order.Status != OrderStatus.PAYMENT_CONFIRMING)
+            {
+                _logger.LogWarning("ConfirmPayment: Order {OrderCode} is not in PAYMENT_CONFIRMING status (current: {Status})",
+                    orderCode, order.Status);
+                return false;
+            }
+
+            var orderAge = DateTime.UtcNow - order.CreatedAt;
+            if (orderAge > PaymentConfirmationWindow)
+            {
+                _logger.LogWarning("ConfirmPayment: Order {OrderCode} exceeded payment window ({Minutes} minutes). CreatedAt={CreatedAt}",
+                    orderCode, PaymentConfirmationWindow.TotalMinutes, order.CreatedAt);
+                return false;
+            }
+
+            if (amountPaid < order.TotalAmount)
+            {
+                _logger.LogWarning("ConfirmPayment: Insufficient amount for {OrderCode}. Expected: {Expected}, Received: {Received}",
+                    orderCode, order.TotalAmount, amountPaid);
+                return false;
+            }
+
+            // 1. Trừ kho (Inventory deduction)
+            await ApplyInventoryOnPreparingAsync(order, "SePay-Webhook");
+
+            // 2. Cập nhật trạng thái sang PREPARING
+            order.Status = OrderStatus.PREPARING;
+            order.StatusHistory.Add(new OrderStatusHistory
+            {
+                Status = OrderStatus.PREPARING,
+                Timestamp = DateTime.UtcNow,
+                UpdatedBy = "SePay-Webhook",
+                Notes = $"Thanh toán xác nhận tự động qua SePay. Số tiền: {amountPaid:N0} VND"
+            });
+            order.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("ConfirmPayment: Order {OrderCode} confirmed. Amount: {Amount}", orderCode, amountPaid);
+            return true;
+        }
+
+        /// Lấy đơn hàng theo mã đơn (cho frontend polling check-status)
+        public async Task<OrderModel?> GetOrderByCodeAsync(string orderCode)
+        {
+            return await _context.Orders
+                .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
         }
 
         private string GenerateOrderCode()
@@ -253,6 +319,9 @@ namespace ShopHangTet.Services
             {
                 var orderItems = await BuildOrderItemsFromB2CAsync(dto.Items);
                 var totalQuantity = orderItems.Sum(x => x.Quantity);
+                var shippingFee = ShouldApplyTestShippingOverride(orderItems)
+                    ? 0
+                    : CalculateShippingFee(1);
 
                 var order = new OrderModel
                 {
@@ -271,7 +340,7 @@ namespace ShopHangTet.Services
                     GreetingMessage = dto.GreetingMessage,
                     GreetingCardUrl = dto.GreetingCardUrl,
                     SubTotal = orderItems.Sum(x => x.TotalPrice),
-                    ShippingFee = CalculateShippingFee(1),
+                    ShippingFee = shippingFee,
                     Status = OrderStatus.PAYMENT_CONFIRMING,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -648,6 +717,20 @@ namespace ShopHangTet.Services
             }
 
             return snapshotItems;
+        }
+
+        private static bool ShouldApplyTestShippingOverride(List<OrderItem> orderItems)
+        {
+            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            if (!string.Equals(environment, "Development", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return orderItems.Any(x =>
+                x.Type == OrderItemType.READY_MADE
+                && !string.IsNullOrWhiteSpace(x.ProductName)
+                && x.ProductName.Contains("[TEST10K]", StringComparison.OrdinalIgnoreCase));
         }
 
         private decimal CalculateShippingFee(int addressCount)
