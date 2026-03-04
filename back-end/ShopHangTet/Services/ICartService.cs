@@ -11,4 +11,3 @@ namespace ShopHangTet.Services
         Task<ApiResponse<bool>> ClearCartAsync(string? userId, string? sessionId);
     }
 }
-}
