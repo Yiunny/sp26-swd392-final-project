@@ -2,6 +2,7 @@
 using ShopHangTet.Data;
 using ShopHangTet.DTOs;
 using ShopHangTet.Models;
+using System;
 
 namespace ShopHangTet.Services
 {
@@ -14,10 +15,11 @@ namespace ShopHangTet.Services
             _context = context;
         }
 
-        // Hàm phụ trợ: Tìm giỏ hàng hoặc tạo mới nếu chưa có
+        // Thêm lệnh Include để gộp bảng
         private async Task<Cart> GetOrCreateCartAsync(string? userId, string? sessionId)
         {
             var cart = await _context.Set<Cart>()
+                .Include(c => c.Items) // <--- CHÌA KHÓA MA THUẬT NẰM Ở ĐÂY
                 .FirstOrDefaultAsync(c =>
                     (!string.IsNullOrEmpty(userId) && c.UserId == userId) ||
                     (!string.IsNullOrEmpty(sessionId) && c.SessionId == sessionId));
@@ -30,8 +32,8 @@ namespace ShopHangTet.Services
             return cart;
         }
 
-        // Hàm phụ trợ: Chuyển Model sang Dto để trả về cho Frontend
-        private CartDto MapToDto(Cart cart)
+        // Truy vấn DB lấy Tên thật xuất ra JSON
+        private async Task<CartDto> MapToDtoAsync(Cart cart)
         {
             var dto = new CartDto
             {
@@ -40,31 +42,60 @@ namespace ShopHangTet.Services
                 SessionId = cart.SessionId,
                 TotalAmount = cart.Items.Sum(i => i.Quantity * i.UnitPrice),
                 TotalItems = cart.Items.Sum(i => i.Quantity),
-                Items = cart.Items.Select(i => new CartItemDto
-                {
-                    Id = i.Id,
-                    Type = i.Type,
-                    GiftBoxId = i.GiftBoxId,
-                    CustomBoxId = i.CustomBoxId,
-                    Quantity = i.Quantity,
-                    UnitPrice = i.UnitPrice,
-                    // Name = TODO: Nối với ProductService để lấy tên sản phẩm hiển thị ra đây
-                }).ToList()
+                Items = new List<CartItemDto>()
             };
+
+            foreach (var item in cart.Items)
+            {
+                string name = "Sản phẩm không xác định";
+
+                // Chạy qua kho GiftBoxes lấy tên thật
+                if (item.Type == OrderItemType.READY_MADE && !string.IsNullOrEmpty(item.GiftBoxId))
+                {
+                    var giftBox = await _context.Set<GiftBox>().FirstOrDefaultAsync(g => g.Id == item.GiftBoxId);
+                    if (giftBox != null) name = giftBox.Name;
+                }
+                else if (item.Type == OrderItemType.MIX_MATCH)
+                {
+                    name = "Hộp quà tự chọn (Mix & Match)";
+                }
+
+                dto.Items.Add(new CartItemDto
+                {
+                    Id = item.Id,
+                    Type = item.Type,
+                    GiftBoxId = item.GiftBoxId,
+                    CustomBoxId = item.CustomBoxId,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    Name = name // Tên đã rực rỡ xuất hiện!
+                });
+            }
             return dto;
         }
 
         public async Task<ApiResponse<CartDto>> GetCartAsync(string? userId, string? sessionId)
         {
             var cart = await GetOrCreateCartAsync(userId, sessionId);
-            return ApiResponse<CartDto>.SuccessResult(MapToDto(cart));
+            // Dùng await vì hàm MapToDtoAsync giờ phải chạy đi tìm tên Sản phẩm
+            return ApiResponse<CartDto>.SuccessResult(await MapToDtoAsync(cart));
         }
 
         public async Task<ApiResponse<CartDto>> AddToCartAsync(string? userId, string? sessionId, AddToCartDto dto)
         {
             var cart = await GetOrCreateCartAsync(userId, sessionId);
 
-            // Kiểm tra xem món hàng này đã có trong giỏ chưa
+            //Bắt buộc lấy giá từ Database phòng hờ ai đó "hack" API
+            decimal unitPrice = 0;
+            if (dto.Type == OrderItemType.READY_MADE && !string.IsNullOrEmpty(dto.GiftBoxId))
+            {
+                var giftBox = await _context.Set<GiftBox>().FirstOrDefaultAsync(g => g.Id == dto.GiftBoxId);
+                if (giftBox == null) return ApiResponse<CartDto>.ErrorResult("Không tìm thấy hộp quà này trong hệ thống!");
+
+                unitPrice = giftBox.Price; // Lấy giá chính hãng
+            }
+
+            // Kiểm tra xem món đó đã có trong giỏ chưa
             var existingItem = cart.Items.FirstOrDefault(i =>
                 i.Type == dto.Type &&
                 ((dto.Type == OrderItemType.READY_MADE && i.GiftBoxId == dto.GiftBoxId) ||
@@ -73,17 +104,19 @@ namespace ShopHangTet.Services
             if (existingItem != null)
             {
                 existingItem.Quantity += dto.Quantity;
+                existingItem.UnitPrice = unitPrice; // Cập nhật lại giá nhỡ shop đổi giá
             }
             else
             {
-                // Món mới tinh
                 var newItem = new CartItem
                 {
+                    CartId = cart.Id,             
+                    SessionId = cart.SessionId,
                     Type = dto.Type,
                     GiftBoxId = dto.GiftBoxId,
                     CustomBoxId = dto.CustomBoxId,
                     Quantity = dto.Quantity,
-                    UnitPrice = 0 // TODO: Gọi ProductService để lấy giá thật của sản phẩm gán vào đây
+                    UnitPrice = unitPrice
                 };
                 cart.Items.Add(newItem);
             }
@@ -91,24 +124,25 @@ namespace ShopHangTet.Services
             cart.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return ApiResponse<CartDto>.SuccessResult(MapToDto(cart), "Đã thêm vào giỏ hàng");
+            return ApiResponse<CartDto>.SuccessResult(await MapToDtoAsync(cart), "Đã thêm vào giỏ hàng");
         }
 
+        // Cập nhật số lượng
         public async Task<ApiResponse<CartDto>> UpdateCartItemAsync(string? userId, string? sessionId, string cartItemId, UpdateCartItemDto dto)
         {
             var cart = await GetOrCreateCartAsync(userId, sessionId);
             var item = cart.Items.FirstOrDefault(i => i.Id == cartItemId);
 
-            if (item == null)
-                return ApiResponse<CartDto>.ErrorResult("Không tìm thấy sản phẩm trong giỏ");
+            if (item == null) return ApiResponse<CartDto>.ErrorResult("Không tìm thấy sản phẩm trong giỏ");
 
             item.Quantity = dto.Quantity;
             cart.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            return ApiResponse<CartDto>.SuccessResult(MapToDto(cart), "Đã cập nhật số lượng");
+            return ApiResponse<CartDto>.SuccessResult(await MapToDtoAsync(cart), "Đã cập nhật số lượng");
         }
 
+        // Xóa 1 món
         public async Task<ApiResponse<bool>> RemoveFromCartItemAsync(string? userId, string? sessionId, string cartItemId)
         {
             var cart = await GetOrCreateCartAsync(userId, sessionId);
@@ -124,6 +158,7 @@ namespace ShopHangTet.Services
             return ApiResponse<bool>.SuccessResult(true, "Đã xóa sản phẩm khỏi giỏ");
         }
 
+        // Xóa sạch giỏ
         public async Task<ApiResponse<bool>> ClearCartAsync(string? userId, string? sessionId)
         {
             var cart = await GetOrCreateCartAsync(userId, sessionId);
