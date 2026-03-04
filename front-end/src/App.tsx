@@ -8,6 +8,7 @@ import ForgotPasswordSuccessPage from './pages/ForgotPasswordSuccessPage'
 import ResetPasswordPage from './pages/ResetPasswordPage'
 import GuidePage from './pages/GuidePage'
 import AboutPage from './pages/AboutPage'
+import AccountPage from './pages/AccountPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/guide" element={<GuidePage />} />
         <Route path="/about" element={<AboutPage />} />
+        <Route path="/account" element={<AccountPage />} />
       </Routes>
     </BrowserRouter>
   )
