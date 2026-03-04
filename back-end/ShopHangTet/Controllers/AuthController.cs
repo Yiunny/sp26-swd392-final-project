@@ -152,8 +152,7 @@ namespace ShopHangTet.Controllers
 
                 var settings = new GoogleJsonWebSignature.ValidationSettings()
                 {
-                    // Tạm tắt Audience để test với token của Playground
-                    // Audience = new List<string>() { clientId } 
+                    Audience = new List<string>() { clientId }
                 };
 
                 // Verify Google Token
