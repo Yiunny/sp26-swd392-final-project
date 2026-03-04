@@ -34,8 +34,12 @@ export default function LoginPage() {
                     email: values.email,
                     password: values.password,
                 });
-                localStorage.setItem("token", response.token);
-                navigate("/");
+                if (response.Success) {
+                    // Token & user data are already saved by authService.login()
+                    navigate("/");
+                } else {
+                    setServerError(response.Message || "Đăng nhập thất bại.");
+                }
             } catch (error) {
                 const apiError = error as ApiError;
                 setServerError(apiError.message || "Đăng nhập thất bại. Vui lòng thử lại.");
