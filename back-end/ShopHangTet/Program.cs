@@ -88,7 +88,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp",
-        policy => policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Port Vue.js và React
+        policy => policy.WithOrigins("http://localhost:5173", "http://localhost:3000", "https://shophangtet-web.onrender.com") // Port Vue.js và React, thêm cái web render nữa
                         .AllowAnyMethod()
                         .AllowAnyHeader()
                         .AllowCredentials());
@@ -108,12 +108,22 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddHostedService<OrderExpirationBackgroundService>();
 // builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<ICartService, CartService>();
+
+// Đăng ký AI Service
+var openRouterApiKey = Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+
+if (string.IsNullOrWhiteSpace(openRouterApiKey))
+{
+    throw new Exception("OPENROUTER_API_KEY not found. .env is not loading.");
+}
+
+builder.Services.AddSingleton<AiService>(sp =>
+    new AiService(openRouterApiKey));
 
 var app = builder.Build();
 
 //Cấu hình Pipeline cho môi trường Development
-if (app.Environment.IsDevelopment())
-{
     app.MapOpenApi(); // Tạo file openapi.json
 
     // Truy cập tại: http://localhost:PORT/scalar/v1
@@ -133,7 +143,7 @@ if (app.Environment.IsDevelopment())
             Console.WriteLine($"📋 Scalar API Documentation: {url}/scalar/v1");
         }
     });
-}
+
 
 //Kích hoạt Middleware
 app.UseCors("AllowVueApp");

@@ -1,152 +1,101 @@
 using Microsoft.AspNetCore.Mvc;
 using ShopHangTet.DTOs;
 using ShopHangTet.Services;
+using System.Security.Claims;
 
-namespace ShopHangTet.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-public class CartController : ControllerBase
+namespace ShopHangTet.Controllers
 {
-    private readonly ICartService _cartService;
-    private readonly ILogger<CartController> _logger;
-
-    public CartController(ICartService cartService, ILogger<CartController> logger)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CartController : ControllerBase
     {
-        _cartService = cartService;
-        _logger = logger;
-    }
+        private readonly ICartService _cartService;
 
-    /// Lấy giỏ hàng hiện tại (theo userId hoặc sessionId)
-    [HttpGet]
-    public async Task<IActionResult> GetCart([FromQuery] string? userId, [FromQuery] string? sessionId)
-    {
-        try
+        public CartController(ICartService cartService)
         {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("userId or sessionId is required"));
-            }
-
-            var cart = await _cartService.GetCartAsync(userId, sessionId);
-            return Ok(ApiResponse<CartDto>.SuccessResult(cart));
+            _cartService = cartService;
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting cart");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
-        }
-    }
 
-    /// Thêm sản phẩm vào giỏ hàng
-    [HttpPost("items")]
-    public async Task<IActionResult> AddToCart([FromQuery] string? userId, [FromQuery] string? sessionId, [FromBody] AddToCartDto dto)
-    {
-        try
+        private (string? UserId, string? SessionId) GetUserOrSession()
         {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("userId or sessionId is required"));
-            }
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                      ?? User.FindFirst("Id")?.Value
+                      ?? User.FindFirst("id")?.Value
+                      ?? User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub)?.Value;
 
-            var cart = await _cartService.AddToCartAsync(userId, sessionId, dto);
-            return Ok(ApiResponse<CartDto>.SuccessResult(cart, "Item added to cart"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding to cart");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
-        }
-    }
+            var sessionId = Request.Headers["X-Session-Id"].FirstOrDefault();
 
-    /// Cập nhật số lượng item trong giỏ
-    [HttpPut("items/{cartItemId}")]
-    public async Task<IActionResult> UpdateCartItem(
-        string cartItemId,
-        [FromQuery] string? userId,
-        [FromQuery] string? sessionId,
-        [FromBody] UpdateCartItemDto dto)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("userId or sessionId is required"));
-            }
-
-            var cart = await _cartService.UpdateCartItemAsync(userId, sessionId, cartItemId, dto);
-            return Ok(ApiResponse<CartDto>.SuccessResult(cart, "Cart item updated"));
+            return (userId, sessionId);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating cart item");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
-        }
-    }
 
-    /// Xóa item khỏi giỏ
-    [HttpDelete("items/{cartItemId}")]
-    public async Task<IActionResult> RemoveCartItem(
-        string cartItemId,
-        [FromQuery] string? userId,
-        [FromQuery] string? sessionId)
-    {
-        try
+        private bool IsValidIdentity(string? userId, string? sessionId)
         {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("userId or sessionId is required"));
-            }
-
-            var cart = await _cartService.RemoveCartItemAsync(userId, sessionId, cartItemId);
-            return Ok(ApiResponse<CartDto>.SuccessResult(cart, "Cart item removed"));
+            return !string.IsNullOrWhiteSpace(userId) || !string.IsNullOrWhiteSpace(sessionId);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error removing cart item");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
-        }
-    }
 
-    /// Xóa toàn bộ giỏ hàng
-    [HttpDelete]
-    public async Task<IActionResult> ClearCart([FromQuery] string? userId, [FromQuery] string? sessionId)
-    {
-        try
+        [HttpGet]
+        public async Task<IActionResult> GetCart()
         {
-            if (string.IsNullOrEmpty(userId) && string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("userId or sessionId is required"));
-            }
+            var (userId, sessionId) = GetUserOrSession();
 
-            await _cartService.ClearCartAsync(userId, sessionId);
-            return Ok(ApiResponse<string>.SuccessResult("Cart cleared"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error clearing cart");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
-        }
-    }
+            if (!IsValidIdentity(userId, sessionId))
+                return BadRequest(ApiResponse<CartDto>.ErrorResult("Cần Token hoặc X-Session-Id"));
 
-    /// Merge guest cart vào user cart khi login
-    [HttpPost("merge")]
-    public async Task<IActionResult> MergeCart([FromQuery] string userId, [FromQuery] string sessionId)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(sessionId))
-            {
-                return BadRequest(ApiResponse<string>.ErrorResult("Both userId and sessionId are required"));
-            }
+            var result = await _cartService.GetCartAsync(userId, sessionId);
 
-            var cart = await _cartService.MergeCartAsync(userId, sessionId);
-            return Ok(ApiResponse<CartDto>.SuccessResult(cart, "Cart merged successfully"));
+            return result.Success ? Ok(result) : BadRequest(result);
         }
-        catch (Exception ex)
+
+        [HttpPost("add")]
+        public async Task<IActionResult> AddToCart([FromBody] AddToCartDto dto)
         {
-            _logger.LogError(ex, "Error merging cart");
-            return BadRequest(ApiResponse<string>.ErrorResult(ex.Message));
+            var (userId, sessionId) = GetUserOrSession();
+
+            if (!IsValidIdentity(userId, sessionId))
+                return BadRequest(ApiResponse<CartDto>.ErrorResult("Cần Token hoặc X-Session-Id"));
+
+            var result = await _cartService.AddToCartAsync(userId, sessionId, dto);
+
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPut("update/{itemId}")]
+        public async Task<IActionResult> UpdateCartItem(string itemId, [FromBody] UpdateCartItemDto dto)
+        {
+            var (userId, sessionId) = GetUserOrSession();
+
+            if (!IsValidIdentity(userId, sessionId))
+                return BadRequest(ApiResponse<CartDto>.ErrorResult("Cần Token hoặc X-Session-Id"));
+
+            var result = await _cartService.UpdateCartItemAsync(userId, sessionId, itemId, dto);
+
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpDelete("remove/{itemId}")]
+        public async Task<IActionResult> RemoveFromCart(string itemId)
+        {
+            var (userId, sessionId) = GetUserOrSession();
+
+            if (!IsValidIdentity(userId, sessionId))
+                return BadRequest(ApiResponse<CartDto>.ErrorResult("Cần Token hoặc X-Session-Id"));
+
+            var result = await _cartService.RemoveFromCartItemAsync(userId, sessionId, itemId);
+
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpDelete("clear")]
+        public async Task<IActionResult> ClearCart()
+        {
+            var (userId, sessionId) = GetUserOrSession();
+
+            if (!IsValidIdentity(userId, sessionId))
+                return BadRequest(ApiResponse<CartDto>.ErrorResult("Cần Token hoặc X-Session-Id"));
+
+            var result = await _cartService.ClearCartAsync(userId, sessionId);
+
+            return result.Success ? Ok(result) : BadRequest(result);
         }
     }
 }
