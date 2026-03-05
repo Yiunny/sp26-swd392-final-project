@@ -43,21 +43,26 @@ namespace ShopHangTet.Services
                 query = query.Where(x => x.Name.Contains(normalizedName));
             }
 
-            return await query
+            var giftBoxes = await query.ToListAsync();
+            var collectionIds = giftBoxes.Select(x => x.CollectionId).Distinct().ToList();
+            var collections = await _context.Collections
+                .Where(x => collectionIds.Contains(x.Id) && x.IsActive)
+                .ToDictionaryAsync(x => x.Id, x => x.Name);
+
+            return giftBoxes
                 .Select(x => new GiftBoxListDto
                 {
                     Id = x.Id,
                     Name = x.Name,
                     Description = x.Description,
                     Price = x.Price,
-                    MainImage = x.Images.FirstOrDefault(),
-                    Images = x.Images,
+                    Image = x.Images.FirstOrDefault(),
                     CollectionId = x.CollectionId,
-                    Tags = x.Tags,
+                    CollectionName = collections.TryGetValue(x.CollectionId, out var collectionName) ? collectionName : string.Empty,
                     IsActive = x.IsActive,
                     CreatedAt = x.CreatedAt
                 })
-                .ToListAsync();
+                .ToList();
         }
 
         public async Task<GiftBoxDetailDto?> GetGiftBoxDetailByIdAsync(string id)
@@ -75,21 +80,42 @@ namespace ShopHangTet.Services
                 .Where(it => itemIds.Contains(it.Id) && it.IsActive)
                 .ToListAsync();
 
+            var collection = await _context.Collections
+                .FirstOrDefaultAsync(x => x.Id == giftBox.CollectionId && x.IsActive);
+
+            var tagIds = giftBox.Tags.Distinct().ToList();
+            var tags = await _context.Tags
+                .Where(t => tagIds.Contains(t.Id) && t.IsActive)
+                .ToListAsync();
+
             return new GiftBoxDetailDto
             {
                 Id = giftBox.Id,
                 Name = giftBox.Name,
                 Description = giftBox.Description,
                 Price = giftBox.Price,
-                MainImage = giftBox.Images.FirstOrDefault(),
                 Images = giftBox.Images,
-                CollectionId = giftBox.CollectionId,
-                Tags = giftBox.Tags,
+                Collection = collection == null
+                    ? null
+                    : new CollectionSummaryDto
+                    {
+                        Id = collection.Id,
+                        Name = collection.Name,
+                        CoverImage = collection.CoverImage
+                    },
+                Tags = tags.Select(t => new TagSummaryDto
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+                    Type = t.Type
+                }).ToList(),
                 Items = giftBox.Items.Select(gi => new GiftBoxDetailItemDto
                 {
                     ItemId = gi.ItemId,
                     Quantity = gi.Quantity,
-                    Item = items.FirstOrDefault(it => it.Id == gi.ItemId)
+                    Name = items.FirstOrDefault(it => it.Id == gi.ItemId)?.Name ?? string.Empty,
+                    PriceSnapshot = gi.ItemPriceSnapshot,
+                    Images = items.FirstOrDefault(it => it.Id == gi.ItemId)?.Images ?? new List<string>()
                 }).ToList(),
                 IsActive = giftBox.IsActive,
                 CreatedAt = giftBox.CreatedAt
@@ -148,10 +174,9 @@ namespace ShopHangTet.Services
                     Name = x.Name,
                     Description = x.Description,
                     Price = x.Price,
-                    MainImage = x.Images.FirstOrDefault(),
-                    Images = x.Images,
+                    Image = x.Images.FirstOrDefault(),
                     CollectionId = x.CollectionId,
-                    Tags = x.Tags,
+                    CollectionName = collection.Name,
                     IsActive = x.IsActive,
                     CreatedAt = x.CreatedAt
                 })
