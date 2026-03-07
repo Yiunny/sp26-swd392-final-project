@@ -17,15 +17,6 @@ function formatPrice(v: number) {
     return v.toLocaleString('vi-VN') + '₫';
 }
 
-function getTagColor(type: string): string {
-    switch (type.toUpperCase()) {
-        case 'CATEGORY': return '#0F766E';
-        case 'OCCASION': return '#D97706';
-        case 'PRICE_RANGE': return '#2563EB';
-        default: return '#6B7280';
-    }
-}
-
 export default function ProductDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const router = useRouter();
@@ -87,7 +78,11 @@ export default function ProductDetailScreen() {
         );
     }
 
-    const images = product.Images.length > 0 ? product.Images : [];
+    const images = product.Images && product.Images.length > 0
+        ? product.Images
+        : product.Image
+            ? [product.Image]
+            : [];
 
     return (
         <View style={styles.screen}>
@@ -137,15 +132,15 @@ export default function ProductDetailScreen() {
                 {/* Product Info */}
                 <View style={styles.infoSection}>
                     {product.Collection && (
-                        <Text style={styles.collectionTag}>{product.Collection.Name}</Text>
+                        <Text style={styles.collectionTag}>{product.Collection}</Text>
                     )}
                     <Text style={styles.productName}>{product.Name}</Text>
 
-                    {product.Tags.length > 0 && (
+                    {product.Tags && product.Tags.length > 0 && (
                         <View style={styles.tagsRow}>
-                            {product.Tags.map((tag) => (
-                                <View key={tag.Id} style={[styles.tag, { backgroundColor: getTagColor(tag.Type) }]}>
-                                    <Text style={styles.tagText}>{tag.Name}</Text>
+                            {product.Tags.map((tag, idx) => (
+                                <View key={idx} style={styles.tag}>
+                                    <Text style={styles.tagText}>{tag}</Text>
                                 </View>
                             ))}
                         </View>
@@ -203,7 +198,7 @@ export default function ProductDetailScreen() {
                         <Text style={styles.detailCardTitle}>ℹ️ Thông tin sản phẩm</Text>
                         <InfoRow label="Tên sản phẩm" value={product.Name} />
                         <InfoRow label="Giá niêm yết" value={formatPrice(product.Price)} />
-                        {product.Collection && <InfoRow label="Bộ sưu tập" value={product.Collection.Name} />}
+                        {product.Collection && <InfoRow label="Bộ sưu tập" value={product.Collection} />}
                         <InfoRow label="Số lượng món" value={`${product.Items.length} món`} />
                         <InfoRow label="Tình trạng" value={product.IsActive ? 'Còn hàng' : 'Hết hàng'} />
                     </View>
@@ -215,15 +210,15 @@ export default function ProductDetailScreen() {
                             {product.Items.map((item, idx) => (
                                 <View key={idx} style={styles.giftItem}>
                                     <View style={styles.giftItemImage}>
-                                        {item.Images.length > 0 ? (
-                                            <Image source={{ uri: item.Images[0] }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                                        {item.Image ? (
+                                            <Image source={{ uri: item.Image }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                                         ) : (
                                             <Text style={{ fontSize: 16 }}>📦</Text>
                                         )}
                                     </View>
                                     <View style={{ flex: 1 }}>
                                         <Text style={styles.giftItemName} numberOfLines={1}>{item.Name}</Text>
-                                        <Text style={styles.giftItemDetail}>SL: {item.Quantity} · {formatPrice(item.PriceSnapshot)}</Text>
+                                        <Text style={styles.giftItemDetail}>SL: {item.Quantity} · {formatPrice(item.Price)}</Text>
                                     </View>
                                 </View>
                             ))}
@@ -308,7 +303,7 @@ const styles = StyleSheet.create({
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', marginBottom: 10,
     },
     tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-    tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+    tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, backgroundColor: '#6B7280' },
     tagText: { color: '#FFF', fontSize: 9, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
     price: { fontSize: 26, fontWeight: '800', color: AppColors.primary, marginBottom: 12 },
     description: { fontSize: 14, color: AppColors.textSecondary, lineHeight: 22, marginBottom: 16 },

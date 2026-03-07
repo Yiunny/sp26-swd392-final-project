@@ -1,25 +1,13 @@
 import apiClient from './apiClient';
 
-// ── Types matching backend DTOs ──
-
-export interface CollectionSummaryDto {
-    Id: string;
-    Name: string;
-    CoverImage: string | null;
-}
-
-export interface TagSummaryDto {
-    Id: string;
-    Name: string;
-    Type: string;
-}
+// ── Types matching backend API response (synced with FE) ──
 
 export interface GiftBoxDetailItemDto {
-    ItemId: string;
+    Id: string;
     Name: string;
+    Price: number;
+    Image: string | null;
     Quantity: number;
-    PriceSnapshot: number;
-    Images: string[];
 }
 
 export interface GiftBoxDetailDto {
@@ -28,8 +16,9 @@ export interface GiftBoxDetailDto {
     Description: string;
     Price: number;
     Images: string[];
-    Collection: CollectionSummaryDto | null;
-    Tags: TagSummaryDto[];
+    Image: string | null;
+    Collection: string | null;
+    Tags: string[];
     Items: GiftBoxDetailItemDto[];
     IsActive: boolean;
     CreatedAt: string;
@@ -50,13 +39,20 @@ export interface GiftBoxListDto {
 const PRODUCTS_ENDPOINT = '/Products';
 
 export const productService = {
-    getGiftBoxes: async (): Promise<GiftBoxListDto[]> => {
+    /**
+     * GET /api/Products/gift-boxes
+     */
+    getGiftBoxes: async (name?: string): Promise<GiftBoxListDto[]> => {
         const response = await apiClient.get<GiftBoxListDto[]>(
             `${PRODUCTS_ENDPOINT}/gift-boxes`,
+            { params: name ? { name } : undefined },
         );
         return response.data;
     },
 
+    /**
+     * GET /api/Products/gift-boxes/{id}
+     */
     getGiftBoxById: async (id: string): Promise<GiftBoxDetailDto> => {
         const response = await apiClient.get<GiftBoxDetailDto>(
             `${PRODUCTS_ENDPOINT}/gift-boxes/${id}`,
@@ -64,9 +60,13 @@ export const productService = {
         return response.data;
     },
 
-    getCollections: async () => {
+    /**
+     * GET /api/Products/collections
+     */
+    getCollections: async (name?: string) => {
         const response = await apiClient.get(
             `${PRODUCTS_ENDPOINT}/collections`,
+            { params: name ? { name } : undefined },
         );
         return response.data;
     },
