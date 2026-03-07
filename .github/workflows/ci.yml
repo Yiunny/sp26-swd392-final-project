@@ -64,3 +64,38 @@ jobs:
     - name: Kiểm tra lỗi và đóng gói (Build)
       working-directory: ./front-end
       run: npm run build
+  # BUILD BACK-END (NODEJS)
+  build-backend-nodejs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tải code về máy ảo
+        uses: actions/checkout@v3
+
+      - name: Cài đặt môi trường Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Cài đặt các gói thư viện npm
+        working-directory: ./back-end-nodejs
+        run: npm install
+
+      - name: Kiểm tra lỗi và đóng gói (Build)
+        working-directory: ./back-end-nodejs
+        run: npm run build
+
+  sync-fork:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo chính 
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push sang fork to deploy
+        env:
+          FORK_PAT: ${{ secrets.FORK_PAT }}
+        run: |
+          git remote add fork https://x-access-token:${FORK_PAT}@github.com/Yiunny/sp26-swd392-final-project.git
+          git push fork main --force
