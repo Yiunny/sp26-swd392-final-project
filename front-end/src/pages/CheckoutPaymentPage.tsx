@@ -132,12 +132,20 @@ export default function CheckoutPaymentPage() {
             const result = await orderService.createB2COrder(orderData);
             setOrderCode(result.orderCode);
 
+            if (!isBuyNow && !isSelectedCheckout) {
+                await cartService.clearCart();
+            } else if (isSelectedCheckout) {
+                await Promise.all(items.map((item) => cartService.removeItem(item.Id)));
+            }
+
             // Generate QR code
             try {
                 await paymentService.createQr(result.orderCode);
             } catch {
                 // QR generation failed but order was created
             }
+
+            navigate(`/order-success?code=${result.orderCode}`);
         } catch (err: unknown) {
             const message = err && typeof err === "object" && "message" in err
                 ? (err as { message: string }).message
