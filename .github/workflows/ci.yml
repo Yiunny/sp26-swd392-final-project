@@ -28,13 +28,13 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Tải các thư viện (Restore)
-      working-directory: ./back-end/ShopHangTet
-      run: dotnet restore
+    - name: Tải các thư viện (Restore) - target project
+      working-directory: ./
+      run: dotnet restore back-end/ShopHangTet/ShopHangTet.csproj
 
-    - name: Kiểm tra lỗi cú pháp (Build)
-      working-directory: ./back-end/ShopHangTet
-      run: dotnet build --no-restore
+    - name: Kiểm tra lỗi cú pháp (Build) - target project
+      working-directory: ./
+      run: dotnet build back-end/ShopHangTet/ShopHangTet.csproj --no-restore
 
     # BƯỚC CHẶN CỬA: Chạy Test chọc thẳng vào MongoDB ảo
     # (Đảm bảo bạn đã tạo thư mục ShopHangTet.Tests theo hướng dẫn trước đó)
