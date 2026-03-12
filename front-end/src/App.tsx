@@ -16,6 +16,7 @@ import CheckoutPage from './pages/CheckoutPage'
 import CheckoutPaymentPage from './pages/CheckoutPaymentPage'
 import OrderSuccessPage from './pages/OrderSuccessPage'
 import VerifyEmailPage from './pages/VerifyEmailPage'
+import OrderTrackingPage from './pages/OrderTrackingPage'
 import AIChatBox from './components/AIChatBox'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
@@ -57,6 +58,7 @@ function App() {
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/payment" element={<CheckoutPaymentPage />} />
           <Route path="/order-success" element={<OrderSuccessPage />} />
+          <Route path="/order-tracking" element={<OrderTrackingPage />} />
 
           {/* Admin panel routes */}
           <Route path="/admin/login" element={<AdminLoginPage />} />

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -21,6 +21,8 @@ export default function CheckoutPaymentPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
+    const [qrLoading, setQrLoading] = useState(false);
 
     // ── Form state ──
     const [receiverName, setReceiverName] = useState("");
@@ -51,6 +53,8 @@ export default function CheckoutPaymentPage() {
     const isSelectedCheckout = !isBuyNow && Array.isArray(checkoutState?.selectedItems);
 
     const [orderCode, setOrderCode] = useState<string | null>(null);
+    const [paymentDetected, setPaymentDetected] = useState(false);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         if (isBuyNow || isSelectedCheckout) {
@@ -64,6 +68,35 @@ export default function CheckoutPaymentPage() {
             .catch(() => setError("Không thể tải giỏ hàng."))
             .finally(() => setLoading(false));
     }, [isBuyNow, isSelectedCheckout]);
+
+    // ── Auto-polling: check payment status every 3 sec when QR is shown ──
+    useEffect(() => {
+        if (!qrImageUrl || !orderCode) return;
+
+        const apiBase = import.meta.env.VITE_API_BASE_URL || "https://shophangtet-api.onrender.com";
+
+        const poll = async () => {
+            try {
+                const res = await fetch(`${apiBase}/Payment/check-status/${orderCode}`);
+                if (!res.ok) return;
+                const json = await res.json();
+                const isPaid = json?.Data?.isPaid ?? json?.data?.isPaid ?? json?.isPaid;
+                if (isPaid) {
+                    setPaymentDetected(true);
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                    setTimeout(() => navigate(`/order-success?code=${orderCode}`), 1500);
+                }
+            } catch {
+                // silently ignore polling errors
+            }
+        };
+
+        pollIntervalRef.current = setInterval(poll, 3000);
+
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+    }, [qrImageUrl, orderCode, navigate]);
 
 
     const items = isBuyNow
@@ -122,7 +155,30 @@ export default function CheckoutPaymentPage() {
                 await Promise.all(items.map((item) => cartService.removeItem(item.Id)));
             }
 
-            navigate(`/order-success?code=${result.orderCode}`);
+            // Fetch QR code for payment
+            setQrLoading(true);
+            try {
+                const qrRes = await fetch(
+                    `${import.meta.env.VITE_API_BASE_URL || "https://shophangtet-api.onrender.com"}/Payment/create-qr/${result.orderCode}`
+                );
+                if (qrRes.ok) {
+                    const json = await qrRes.json();
+                    // Backend trả về { Data: { qrUrl, bankAccount, bankName, ... } }
+                    const qrUrl = json?.Data?.qrUrl ?? json?.data?.qrUrl ?? json?.qrUrl;
+                    if (qrUrl) {
+                        setQrImageUrl(qrUrl);
+                    } else {
+                        navigate(`/order-success?code=${result.orderCode}`);
+                    }
+                } else {
+                    // If QR fails, just navigate to success
+                    navigate(`/order-success?code=${result.orderCode}`);
+                }
+            } catch {
+                navigate(`/order-success?code=${result.orderCode}`);
+            } finally {
+                setQrLoading(false);
+            }
         } catch (err: unknown) {
             const message = err && typeof err === "object" && "message" in err
                 ? (err as { message: string }).message
@@ -171,6 +227,86 @@ export default function CheckoutPaymentPage() {
     return (
         <div className="font-sans bg-[#F5F5F0] min-h-screen flex flex-col">
             <Header />
+
+            {/* ════════ QR PAYMENT MODAL ════════ */}
+            {(qrLoading || qrImageUrl) && orderCode && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 flex flex-col items-center gap-4">
+
+                        {paymentDetected ? (
+                            /* ── Payment Detected State ── */
+                            <div className="flex flex-col items-center gap-3 py-4">
+                                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                    <svg className="w-9 h-9 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <h2 className="text-lg font-bold text-gray-900">Thanh toán thành công!</h2>
+                                <p className="text-sm text-gray-500 text-center">Đang chuyển đến trang xác nhận đơn hàng...</p>
+                                <svg className="w-5 h-5 text-green-500 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                </svg>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <svg className="w-6 h-6 text-[#8B1A1A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    <h2 className="text-lg font-bold text-gray-900">Thanh toán QR Code</h2>
+                                </div>
+
+                                <p className="text-sm text-gray-500 text-center">
+                                    Mã đơn hàng: <span className="font-semibold text-[#8B1A1A]">{orderCode}</span>
+                                </p>
+                                <p className="text-sm text-gray-500 text-center">
+                                    Quét QR bằng ứng dụng ngân hàng để thanh toán
+                                </p>
+
+                                {qrLoading ? (
+                                    <div className="flex flex-col items-center gap-3 py-8">
+                                        <svg className="w-10 h-10 text-[#8B1A1A] animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                        </svg>
+                                        <p className="text-sm text-gray-500">Đang tạo mã QR...</p>
+                                    </div>
+                                ) : qrImageUrl ? (
+                                    <img
+                                        src={qrImageUrl}
+                                        alt="QR thanh toán"
+                                        className="w-52 h-52 object-contain border-2 border-gray-100 rounded-xl"
+                                    />
+                                ) : null}
+
+                                <p className="text-xs text-gray-400 text-center">
+                                    Tổng thanh toán: <span className="font-bold text-gray-800">{formatPrice(totalAmount + 35000)}</span>
+                                </p>
+
+                                {/* Polling status */}
+                                <div className="flex items-center gap-2 text-xs text-gray-400">
+                                    <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                                    Đang tự động kiểm tra thanh toán...
+                                </div>
+
+                                <button
+                                    onClick={() => navigate(`/order-success?code=${orderCode}`)}
+                                    className="w-full py-3 bg-[#8B1A1A] hover:bg-[#701515] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Đã thanh toán xong →
+                                </button>
+                                <button
+                                    onClick={() => navigate(`/order-success?code=${orderCode}`)}
+                                    className="text-xs text-gray-400 hover:text-gray-600 hover:underline cursor-pointer"
+                                >
+                                    Thanh toán sau (COD)
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* ════════ PAGE TITLE ════════ */}
             <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pt-8 pb-4">
