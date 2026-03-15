@@ -78,15 +78,22 @@ function App() {
 
           <Route path="/admin" element={<AdminRoute />}>
             <Route element={<AdminLayout />}>
-              <Route index element={<AdminDashboardPage />} />
-              <Route path="orders" element={<AdminOrdersPage />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="collections" element={<AdminCollectionsPage />} />
-              <Route path="giftboxes" element={<AdminGiftBoxesPage />} />
-              <Route path="inventory" element={<AdminInventoryPage />} />
-              <Route path="mix-match" element={<AdminMixMatchPage />} />
-              <Route path="reviews" element={<AdminReviewsPage />} />
-              <Route path="reports" element={<AdminReportsPage />} />
+              {/* Admin ONLY roles */}
+              <Route element={<AdminRoute allowedRoles={[2]} />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="mix-match" element={<AdminMixMatchPage />} />
+                <Route path="reviews" element={<AdminReviewsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+              </Route>
+
+              {/* Staff + Admin roles */}
+              <Route element={<AdminRoute allowedRoles={[1, 2]} />}>
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="collections" element={<AdminCollectionsPage />} />
+                <Route path="giftboxes" element={<AdminGiftBoxesPage />} />
+                <Route path="inventory" element={<AdminInventoryPage />} />
+              </Route>
             </Route>
           </Route>
           <Route path="*" element={<NotFoundPage />} />
