@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { mixMatchService, type MixMatchItem } from "../services/mixMatchService";
 import { cartService } from "../services/cartService";
+import { authService } from "../services/authService";
 
 const formatPrice = (value: number) => value.toLocaleString("vi-VN") + "₫";
 
@@ -27,6 +28,7 @@ type DragSource = {
 export default function MixMatchPage() {
     const location = useLocation();
     const navigate = useNavigate();
+    const isLoggedIn = authService.isAuthenticated();
     const editBoxId = location.state?.editBoxId;
     const initialItems = location.state?.items; // Array of items from custom box
 
@@ -202,6 +204,36 @@ export default function MixMatchPage() {
             <div className="font-sans bg-[#F5F5F0] min-h-screen flex flex-col">
                 <Header />
 
+                {/* ══ Login guard ══ */}
+                {!isLoggedIn ? (
+                    <main className="flex-1 flex items-center justify-center px-4 py-20">
+                        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-md w-full text-center">
+                            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#8B1A1A]/10 flex items-center justify-center">
+                                <svg className="w-8 h-8 text-[#8B1A1A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-900 mb-2">Đăng nhập để tiếp tục</h2>
+                            <p className="text-sm text-gray-500 mb-6">
+                                Bạn cần đăng nhập để sử dụng tính năng tạo giỏ quà Mix &amp; Match.
+                            </p>
+                            <Link
+                                to="/login"
+                                state={{ from: "/mix-match" }}
+                                className="inline-block w-full py-3 bg-[#8B1A1A] text-white text-sm font-bold uppercase tracking-wider rounded-lg hover:bg-[#701515] transition-colors"
+                            >
+                                Đăng nhập
+                            </Link>
+                            <p className="text-xs text-gray-400 mt-4">
+                                Chưa có tài khoản?{" "}
+                                <Link to="/register" className="text-[#8B1A1A] hover:underline font-medium">
+                                    Đăng ký ngay
+                                </Link>
+                            </p>
+                        </div>
+                    </main>
+                ) : (
+                <>
                 <section className="max-w-7xl w-full mx-auto px-4 lg:px-8 pt-8 pb-4">
                     <h1 className="font-serif text-3xl lg:text-4xl font-bold italic mb-2">
                         <span className="relative">
@@ -344,6 +376,8 @@ export default function MixMatchPage() {
                         </div>
                     </div>
                 </main>
+                </>
+                )}
 
                 <Footer />
             </div>

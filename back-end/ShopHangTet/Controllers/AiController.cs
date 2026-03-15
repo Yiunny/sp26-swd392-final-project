@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using ShopHangTet.DTOs;
 using ShopHangTet.Models;
 using ShopHangTet.Services;
@@ -29,7 +29,8 @@ namespace ShopHangTet.Controllers
             if (request.Messages == null || !request.Messages.Any())
                 return BadRequest("Messages list cannot be empty.");
 
-            var lastUserMessage = request.Messages.LastOrDefault(m => m.Sender.ToUpper() == "GUEST")?.Message;
+            var lastUserMessage = request.Messages
+                .LastOrDefault(m => m.Sender.ToUpper() != "BOT" && m.Sender.ToUpper() != "STAFF")?.Message;
 
             if (string.IsNullOrWhiteSpace(lastUserMessage))
                 return BadRequest("User message is required.");

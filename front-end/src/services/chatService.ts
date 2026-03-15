@@ -1,5 +1,12 @@
 import apiClient from "./apiClient";
 
+export interface ChatMessagePayload {
+    id: string;
+    sender: string;
+    message: string;
+    createdAt: string;
+}
+
 export interface ChatResponse {
     response: string;
 }
@@ -7,11 +14,14 @@ export interface ChatResponse {
 export const chatService = {
     /**
      * POST /api/Ai/chat
-     * Sends a message to the AI chatbot and returns the response.
+     * Sends conversation messages to the AI chatbot and returns the response.
      */
-    sendMessage: async (message: string, language: string = "Vi"): Promise<ChatResponse> => {
+    sendMessage: async (
+        messages: ChatMessagePayload[],
+        language: string = "Vi",
+    ): Promise<ChatResponse> => {
         const res = await apiClient.post<ChatResponse>("/Ai/chat", {
-            message,
+            messages,
             language,
         });
         return res.data;
