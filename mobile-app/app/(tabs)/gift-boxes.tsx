@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
-    RefreshControl, Modal, Platform, Dimensions,
+    RefreshControl, Modal, Platform, Dimensions, ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { productService, type GiftBoxListDto } from '../../services/productService';
@@ -34,12 +34,20 @@ function formatPrice(v: number | undefined) {
 
 export default function GiftBoxesScreen() {
     const router = useRouter();
+    const { collectionId } = useLocalSearchParams<{ collectionId: string | string[] }>();
+    const tabsScrollRef = useRef<ScrollView>(null);
+    const tabPositions = useRef<Record<string, { x: number; width: number }>>({});
+    const collectionIdParam = Array.isArray(collectionId) ? collectionId[0] : collectionId;
+
     const [giftBoxes, setGiftBoxes] = useState<GiftBoxListDto[]>([]);
+    const [collections, setCollections] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState('');
 
     const [selectedPriceRanges, setSelectedPriceRanges] = useState<number[]>([]);
+    const [selectedCollectionId, setSelectedCollectionId] = useState<string>('all');
+    const [selectedCollectionName, setSelectedCollectionName] = useState<string>('');
     const [sortBy, setSortBy] = useState('popular');
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [sortModalVisible, setSortModalVisible] = useState(false);
@@ -47,8 +55,12 @@ export default function GiftBoxesScreen() {
     const fetchData = async () => {
         try {
             setError('');
-            const data = await productService.getGiftBoxes();
-            setGiftBoxes(data);
+            const [giftBoxesRes, collectionsRes] = await Promise.all([
+                productService.getGiftBoxes(),
+                productService.getCollections(),
+            ]);
+            setGiftBoxes(giftBoxesRes || []);
+            setCollections(collectionsRes && Array.isArray(collectionsRes) ? collectionsRes : (collectionsRes?.data || []));
         } catch {
             setError('Không thể tải danh sách giỏ quà.');
         } finally {
@@ -59,6 +71,45 @@ export default function GiftBoxesScreen() {
 
     useEffect(() => { fetchData(); }, []);
 
+    const scrollToSelected = useCallback((key: string) => {
+        const pos = tabPositions.current[key];
+        if (!pos) {
+            tabsScrollRef.current?.scrollTo({ x: 0, animated: false });
+            return;
+        }
+        const targetX = Math.max(0, pos.x - width / 2 + pos.width / 2);
+        tabsScrollRef.current?.scrollTo({ x: targetX, animated: true });
+    }, []);
+
+    useEffect(() => {
+        if (collectionIdParam) {
+            const match = collections.find((col: any) => {
+                const id = col?.Id || col?.id;
+                return id === collectionIdParam;
+            });
+            if (match) {
+                setSelectedCollectionId(collectionIdParam);
+                setSelectedCollectionName(match?.Name || match?.name || '');
+            } else {
+                setSelectedCollectionId('all');
+                setSelectedCollectionName('');
+            }
+        } else {
+            setSelectedCollectionId('all');
+            setSelectedCollectionName('');
+        }
+    }, [collectionIdParam, collections]);
+
+    useEffect(() => {
+        if (selectedCollectionId !== 'all') {
+            scrollToSelected(selectedCollectionId);
+        } else if (selectedCollectionName) {
+            scrollToSelected(selectedCollectionName);
+        } else {
+            scrollToSelected('all');
+        }
+    }, [selectedCollectionId, selectedCollectionName, collections.length, scrollToSelected]);
+
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         fetchData();
@@ -66,6 +117,22 @@ export default function GiftBoxesScreen() {
 
     const filtered = useMemo(() => {
         let items = [...giftBoxes];
+        const normalizedName = selectedCollectionName.trim().toLowerCase();
+
+        if (selectedCollectionId !== 'all') {
+            items = items.filter((gb) => {
+                if (gb.CollectionId === selectedCollectionId) return true;
+                if (!normalizedName) return false;
+                const name = (gb.CollectionName || (gb as any).Collection || '').toLowerCase();
+                return name === normalizedName;
+            });
+        } else if (normalizedName) {
+            items = items.filter((gb) => {
+                const name = (gb.CollectionName || (gb as any).Collection || '').toLowerCase();
+                return name === normalizedName;
+            });
+        }
+
         if (selectedPriceRanges.length > 0) {
             items = items.filter((gb) =>
                 selectedPriceRanges.some((idx) => {
@@ -80,13 +147,18 @@ export default function GiftBoxesScreen() {
             case 'price-desc': items.sort((a, b) => b.Price - a.Price); break;
         }
         return items;
-    }, [giftBoxes, selectedPriceRanges, sortBy]);
+    }, [giftBoxes, selectedCollectionId, selectedCollectionName, selectedPriceRanges, sortBy]);
 
     const togglePriceRange = (idx: number) => {
         setSelectedPriceRanges((prev) =>
             prev.includes(idx) ? prev.filter((i) => i !== idx) : [...prev, idx],
         );
     };
+
+    const onSelectCollection = useCallback((id: string, name?: string) => {
+        setSelectedCollectionId(id);
+        setSelectedCollectionName(name || '');
+    }, []);
 
     const getBadge = (price: number) => {
         if (price >= 3_000_000) return { text: 'Premium', color: '#D4AF37' };
@@ -139,27 +211,81 @@ export default function GiftBoxesScreen() {
                 </Text>
             </View>
 
+            {/* Filters */}
+            <View style={styles.filterPanel}>
+                <Text style={styles.filterLabel}>Bộ sưu tập</Text>
+                <ScrollView
+                    ref={tabsScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.collectionTabs}
+                >
+                    <TouchableOpacity
+                        style={[styles.collectionTab, selectedCollectionId === 'all' && styles.collectionTabActive]}
+                        onPress={() => onSelectCollection('all', '')}
+                        onLayout={(e) => {
+                            tabPositions.current['all'] = {
+                                x: e.nativeEvent.layout.x,
+                                width: e.nativeEvent.layout.width,
+                            };
+                        }}
+                    >
+                        <Text
+                            style={[styles.collectionTabText, selectedCollectionId === 'all' && styles.collectionTabTextActive]}
+                        >
+                            All
+                        </Text>
+                    </TouchableOpacity>
+                    {collections.map((col: any) => {
+                        const id = col?.Id || col?.id;
+                        const name = col?.Name || col?.name || 'Collection';
+                        return (
+                            <TouchableOpacity
+                                key={id || name}
+                                style={[styles.collectionTab, selectedCollectionId === id && styles.collectionTabActive]}
+                                onPress={() => onSelectCollection(id, name)}
+                                onLayout={(e) => {
+                                    const key = id || name;
+                                    tabPositions.current[key] = {
+                                        x: e.nativeEvent.layout.x,
+                                        width: e.nativeEvent.layout.width,
+                                    };
+                                }}
+                            >
+                                <Text
+                                    style={[styles.collectionTabText, selectedCollectionId === id && styles.collectionTabTextActive]}
+                                >
+                                    {name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+
             {/* Filter/Sort bar */}
             <View style={styles.controlBar}>
-                <TouchableOpacity
-                    style={styles.controlBtn}
-                    onPress={() => setFilterModalVisible(true)}
-                >
-                    <Ionicons name="filter" size={16} color={AppColors.textSecondary} />
-                    <Text style={styles.controlBtnText}>
-                        Bộ lọc{selectedPriceRanges.length > 0 ? ` (${selectedPriceRanges.length})` : ''}
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.leftControls}>
+                    <TouchableOpacity
+                        style={styles.controlBtn}
+                        onPress={() => setFilterModalVisible(true)}
+                    >
+                        <Ionicons name="filter" size={16} color={AppColors.textSecondary} />
+                        <Text style={styles.controlBtnText}>
+                            Bộ lọc{selectedPriceRanges.length > 0 ? ` (${selectedPriceRanges.length})` : ''}
+                        </Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                    style={styles.controlBtn}
-                    onPress={() => setSortModalVisible(true)}
-                >
-                    <Ionicons name="swap-vertical" size={16} color={AppColors.textSecondary} />
-                    <Text style={styles.controlBtnText}>
-                        {SORT_OPTIONS.find((s) => s.value === sortBy)?.label}
-                    </Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.controlBtn}
+                        onPress={() => setSortModalVisible(true)}
+                    >
+                        <Ionicons name="swap-vertical" size={16} color={AppColors.textSecondary} />
+                        <Text style={styles.controlBtnText}>
+                            {SORT_OPTIONS.find((s) => s.value === sortBy)?.label}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
 
                 <Text style={styles.countText}>{filtered.length} sản phẩm</Text>
             </View>
@@ -281,6 +407,41 @@ const styles = StyleSheet.create({
         color: 'rgba(255,255,255,0.8)',
     },
 
+    filterPanel: {
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.md,
+        paddingBottom: 4,
+    },
+    filterLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: AppColors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 1,
+        marginBottom: 10,
+    },
+    collectionTabs: { gap: 10, paddingBottom: 8 },
+    collectionTab: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        backgroundColor: AppColors.surface,
+    },
+    collectionTabActive: {
+        backgroundColor: AppColors.primary,
+        borderColor: AppColors.primary,
+    },
+    collectionTabText: {
+        fontSize: 12,
+        color: AppColors.textSecondary,
+        fontWeight: '600',
+    },
+    collectionTabTextActive: {
+        color: '#FFF',
+        fontWeight: '700',
+    },
     controlBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -288,6 +449,7 @@ const styles = StyleSheet.create({
         paddingVertical: Spacing.md,
         gap: 8,
     },
+    leftControls: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     controlBtn: {
         flexDirection: 'row',
         alignItems: 'center',
