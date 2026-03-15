@@ -128,7 +128,7 @@ export default function CartScreen() {
         <View style={styles.swipeActions}>
             <TouchableOpacity onPress={() => handleRemove(itemId)} style={styles.swipeDeleteBtn}>
                 <Ionicons name="trash-outline" size={20} color="#FFF" />
-                <Text style={styles.swipeDeleteText}>Xoa</Text>
+                <Text style={styles.swipeDeleteText}>Xóa</Text>
             </TouchableOpacity>
         </View>
     );
