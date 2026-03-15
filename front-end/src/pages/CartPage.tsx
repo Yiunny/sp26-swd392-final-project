@@ -45,11 +45,13 @@ export default function CartPage() {
         fetchCart();
     }, []);
 
-    const items = cart?.Items ?? [];
+    const items = useMemo(() => cart?.Items ?? [], [cart]);
 
     useEffect(() => {
+        if (!cart) return;
+
         if (!items.length) {
-            setSelectedIds(new Set());
+            setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
             return;
         }
 
@@ -60,9 +62,12 @@ export default function CartPage() {
                     next.add(item.Id);
                 }
             });
+            if (next.size === prev.size && items.every((item) => prev.has(item.Id) === next.has(item.Id))) {
+                return prev;
+            }
             return next;
         });
-    }, [items]);
+    }, [cart, items]);
 
     const { selectedItems, selectedTotals } = useMemo(() => {
         const filtered = items.filter((item) => selectedIds.has(item.Id));
