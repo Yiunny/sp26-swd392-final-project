@@ -7,7 +7,7 @@ import type { ApiResponse } from '../types/auth';
 export interface CartItemDto {
     Id: string;
     Type: number;            // 0 = READY_MADE, 1 = MIX_MATCH
-    ProductId?: string;
+    ProductId: string | null;
     GiftBoxId: string | null;
     CustomBoxId: string | null;
     Quantity: number;
@@ -109,5 +109,13 @@ export const cartService = {
             headers: await getHeaders(),
         });
         cartEvents.emit();
+    },
+
+    addToCartBatch: async (items: AddToCartRequest[]): Promise<CartDto> => {
+        const res = await apiClient.post<ApiResponse<CartDto>>('/Cart/add-batch', { Items: items }, {
+            headers: await getHeaders(),
+        });
+        cartEvents.emit();
+        return res.data.Data;
     },
 };

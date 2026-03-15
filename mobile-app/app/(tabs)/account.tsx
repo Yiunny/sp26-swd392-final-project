@@ -126,6 +126,11 @@ export default function AccountScreen() {
                     label="Sổ địa chỉ"
                     onPress={() => router.push('/addresses' as any)}
                 />
+                <MenuItem
+                    icon="cube-outline"
+                    label="Giỏ quà custom (Mix & Match)"
+                    onPress={() => router.push('/custom-boxes' as any)}
+                />
             </View>
 
             {/* Profile Form */}
