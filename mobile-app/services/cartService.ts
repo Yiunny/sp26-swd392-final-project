@@ -110,4 +110,12 @@ export const cartService = {
         });
         cartEvents.emit();
     },
+
+    addToCartBatch: async (items: AddToCartRequest[]): Promise<CartDto> => {
+        const res = await apiClient.post<ApiResponse<CartDto>>('/Cart/add-batch', { Items: items }, {
+            headers: await getHeaders(),
+        });
+        cartEvents.emit();
+        return res.data.Data;
+    },
 };

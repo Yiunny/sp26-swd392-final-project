@@ -280,7 +280,7 @@ export default function CheckoutPaymentScreen() {
         CustomerName: customerName || receiverName,
         CustomerPhone: customerPhone || receiverPhone,
         Items: items.map((item) => ({
-          Type: item.Type,
+          Type: item.Type as OrderItemType,
           Id: item.ProductId
             ?? (item.Type === 0 ? item.GiftBoxId ?? undefined : item.CustomBoxId ?? undefined),
           GiftBoxId: item.GiftBoxId ?? undefined,
@@ -296,12 +296,14 @@ export default function CheckoutPaymentScreen() {
         DeliveryDate: new Date(deliveryDate).toISOString(),
       };
 
-      setPayloadPreview(JSON.stringify(orderData, null, 2));
-
       const result = await orderService.createB2COrder(orderData);
       setOrderCode(result.orderCode);
 
-      await cartService.clearCart();
+      // Only clear cart if this is a standard cart checkout, 
+      // not a "buy now" or partial selected items checkout
+      if (!buyNow && !selectedItems && !itemsParam) {
+        await cartService.clearCart();
+      }
 
       if (paymentMethod === 'BANK') {
         const qr = await paymentService.createQr(result.orderCode);
@@ -880,6 +882,20 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: AppColors.primary, fontSize: 12, fontWeight: '700' },
   successText: { fontSize: 14, fontWeight: '700', color: AppColors.success },
+
+  defaultBadge: {
+    position: 'absolute', top: -8, right: -8, backgroundColor: AppColors.primary,
+    color: '#FFF', fontSize: 9, fontWeight: '700', paddingHorizontal: 6, paddingVertical: 2,
+    borderRadius: 8, overflow: 'hidden'
+  },
+  loadingText: { fontSize: 13, color: AppColors.textSecondary, fontStyle: 'italic', marginVertical: 8 },
+  dateActions: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 20
+  },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: AppColors.text },

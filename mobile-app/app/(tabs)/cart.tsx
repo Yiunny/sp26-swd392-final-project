@@ -3,10 +3,11 @@ import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
     RefreshControl, Alert, Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import { cartService, cartEvents, type CartDto, type CartItemDto } from '../../services/cartService';
+import { mixMatchService } from '../../services/mixMatchService';
 import { AppColors, Spacing, BorderRadius } from '../../constants/theme';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -28,12 +29,20 @@ export default function CartScreen() {
     const [error, setError] = useState<string | null>(null);
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [selectionTouched, setSelectionTouched] = useState(false);
+    const [activeCustomBoxIds, setActiveCustomBoxIds] = useState<Set<string>>(new Set());
 
     const fetchCart = useCallback(async () => {
         try {
             setError(null);
-            const data = await cartService.getCart();
+            const [data, boxes] = await Promise.all([
+                cartService.getCart(),
+                mixMatchService.getMyCustomBoxes().catch(() => [])
+            ]);
             setCart(data);
+            
+            const boxData = Array.isArray(boxes) ? boxes : (boxes as any)?.Data ?? [];
+            const ids = new Set<string>(boxData.map((b: any) => b.Id));
+            setActiveCustomBoxIds(ids);
         } catch {
             setError('Không thể tải giỏ hàng.');
         } finally {
@@ -42,11 +51,13 @@ export default function CartScreen() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchCart();
-        const unsub = cartEvents.subscribe(fetchCart);
-        return unsub;
-    }, [fetchCart]);
+    useFocusEffect(
+        useCallback(() => {
+            fetchCart();
+            const unsub = cartEvents.subscribe(fetchCart);
+            return unsub;
+        }, [fetchCart])
+    );
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
@@ -83,9 +94,13 @@ export default function CartScreen() {
 
     const items = useMemo(() => cart?.Items ?? EMPTY_ITEMS, [cart?.Items]);
 
+    const selectableItems = useMemo(() => {
+        return items.filter(i => !(i.Type === 1 && i.CustomBoxId && !activeCustomBoxIds.has(i.CustomBoxId)));
+    }, [items, activeCustomBoxIds]);
+
     useEffect(() => {
         setSelectedIds((prev) => {
-            const itemIds = items.map((item) => item.Id);
+            const itemIds = selectableItems.map((item) => item.Id);
             if (!selectionTouched) {
                 return new Set(itemIds);
             }
@@ -96,7 +111,7 @@ export default function CartScreen() {
             });
             return next;
         });
-    }, [items, selectionTouched]);
+    }, [selectableItems, selectionTouched]);
 
     const selectedItems = useMemo(
         () => items.filter((item) => selectedIds.has(item.Id)),
@@ -107,7 +122,7 @@ export default function CartScreen() {
         [selectedItems],
     );
     const selectedCount = selectedItems.length;
-    const isAllSelected = items.length > 0 && selectedCount === items.length;
+    const isAllSelected = selectableItems.length > 0 && selectedCount === selectableItems.length;
 
     const toggleSelectItem = (itemId: string) => {
         setSelectionTouched(true);
@@ -121,7 +136,7 @@ export default function CartScreen() {
 
     const toggleSelectAll = () => {
         setSelectionTouched(true);
-        setSelectedIds(isAllSelected ? new Set() : new Set(items.map((item) => item.Id)));
+        setSelectedIds(isAllSelected ? new Set() : new Set(selectableItems.map((item) => item.Id)));
     };
 
     const renderRightActions = (itemId: string) => (
@@ -135,14 +150,22 @@ export default function CartScreen() {
 
     if (loading) return <LoadingSpinner />;
 
-    const renderCartItem = ({ item }: { item: CartItemDto }) => (
+    const renderCartItem = ({ item }: { item: CartItemDto }) => {
+        const isCustomBox = item.Type === 1;
+        const isDisabledCustomBox = Boolean(isCustomBox && item.CustomBoxId && !activeCustomBoxIds.has(item.CustomBoxId));
+
+        return (
         <Swipeable renderRightActions={() => renderRightActions(item.Id)} overshootRight={false}>
-            <View style={styles.cartItem}>
-                <TouchableOpacity onPress={() => toggleSelectItem(item.Id)} style={styles.selectBox}>
+            <View style={[styles.cartItem, isDisabledCustomBox && { opacity: 0.5 }]}>
+                <TouchableOpacity 
+                    onPress={() => !isDisabledCustomBox && toggleSelectItem(item.Id)} 
+                    style={styles.selectBox}
+                    disabled={isDisabledCustomBox}
+                >
                     <Ionicons
                         name={selectedIds.has(item.Id) ? 'checkbox-outline' : 'square-outline'}
                         size={22}
-                        color={selectedIds.has(item.Id) ? AppColors.primary : AppColors.textMuted}
+                        color={isDisabledCustomBox ? AppColors.border : (selectedIds.has(item.Id) ? AppColors.primary : AppColors.textMuted)}
                     />
                 </TouchableOpacity>
                 <View style={styles.cartItemLeft}>
@@ -150,15 +173,30 @@ export default function CartScreen() {
                         <Ionicons name="gift-outline" size={28} color={AppColors.primary} />
                     </View>
                 </View>
-                <View style={styles.cartItemRight}>
+                <TouchableOpacity 
+                    style={styles.cartItemRight}
+                    activeOpacity={isCustomBox && !isDisabledCustomBox ? 0.7 : 1}
+                    disabled={isDisabledCustomBox}
+                    onPress={() => {
+                        if (isCustomBox && !isDisabledCustomBox) {
+                            // The user asked to be able to view details, we can navigate to custom-boxes
+                            router.push('/custom-boxes' as any);
+                        }
+                    }}
+                >
                     <View style={styles.itemHeader}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.itemName} numberOfLines={2}>
-                                {item.Name || 'Sản phẩm'}
-                            </Text>
-                            <View style={[styles.typeBadge, { backgroundColor: item.Type === 0 ? '#0F766E' : '#D97706' }]}>
-                                <Text style={styles.typeBadgeText}>{getTypeLabel(item.Type)}</Text>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.itemName} numberOfLines={2}>
+                                    {item.Name || 'Sản phẩm'} {isDisabledCustomBox && '(Đã Xoá)'}
+                                </Text>
+                                <View style={[styles.typeBadge, { backgroundColor: item.Type === 0 ? '#0F766E' : '#D97706' }]}>
+                                    <Text style={styles.typeBadgeText}>{getTypeLabel(item.Type)}</Text>
+                                </View>
                             </View>
+                            {item.Type === 1 && (
+                                <Ionicons name="chevron-forward" size={16} color={AppColors.textMuted} />
+                            )}
                         </View>
                     </View>
                     <Text style={styles.unitPrice}>Đơn giá: {formatPrice(item.UnitPrice)}</Text>
@@ -181,10 +219,11 @@ export default function CartScreen() {
                         </View>
                         <Text style={styles.itemTotal}>{formatPrice(item.UnitPrice * item.Quantity)}</Text>
                     </View>
-                </View>
+                </TouchableOpacity>
             </View>
         </Swipeable>
-    );
+        );
+    };
 
     return (
         <View style={styles.screen}>

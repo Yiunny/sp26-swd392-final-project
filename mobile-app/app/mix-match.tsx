@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     View, Text, FlatList, TouchableOpacity, StyleSheet,
     Platform, Dimensions, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { mixMatchService, type MixMatchItem } from '../services/mixMatchService';
+import { mixMatchService, type MixMatchItem, type CustomBoxItemResponse } from '../services/mixMatchService';
 import { cartService } from '../services/cartService';
 import { AppColors, Spacing, BorderRadius } from '../constants/theme';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -21,10 +21,35 @@ function formatPrice(v: number) {
 
 export default function MixMatchScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams<{ editBoxId?: string; items?: string }>();
+    const isEditMode = !!params.editBoxId;
+
     const [items, setItems] = useState<MixMatchItem[]>([]);
     const [categories, setCategories] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('all');
-    const [slots, setSlots] = useState<Array<string | null>>(EMPTY_SLOTS);
+    
+    // Initialize slots based on edit mode params if available
+    const initialSlots = useMemo(() => {
+        if (!isEditMode || !params.items) return [...EMPTY_SLOTS];
+        try {
+            const parsedItems: CustomBoxItemResponse[] = JSON.parse(params.items);
+            const loadedSlots = [...EMPTY_SLOTS];
+            let slotIdx = 0;
+            parsedItems.forEach((it) => {
+                for (let i = 0; i < it.Quantity; i++) {
+                    if (slotIdx < 6) {
+                        loadedSlots[slotIdx] = it.ItemId;
+                        slotIdx++;
+                    }
+                }
+            });
+            return loadedSlots;
+        } catch {
+            return [...EMPTY_SLOTS];
+        }
+    }, [isEditMode, params.items]);
+
+    const [slots, setSlots] = useState<Array<string | null>>(initialSlots);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
@@ -103,14 +128,21 @@ export default function MixMatchScreen() {
         setSubmitting(true);
         try {
             const itemsPayload = buildItemsPayload();
-            const customBoxId = await mixMatchService.createCustomBox(itemsPayload);
-            await cartService.addToCart({ Type: 1, CustomBoxId: customBoxId, Quantity: 1 });
-            Alert.alert('Thành công', 'Đã thêm giỏ quà vào giỏ hàng.', [
-                { text: 'Tiếp tục', style: 'cancel' },
-                { text: 'Tới giỏ hàng', onPress: () => router.push('/(tabs)/cart' as any) }
-            ]);
+            if (isEditMode && params.editBoxId) {
+                await mixMatchService.updateCustomBox(params.editBoxId, itemsPayload);
+                Alert.alert('Thành công', 'Đã cập nhật giỏ quà custom.', [
+                    { text: 'Quay lại', onPress: () => router.back() }
+                ]);
+            } else {
+                const customBoxId = await mixMatchService.createCustomBox(itemsPayload);
+                await cartService.addToCart({ Type: 1, CustomBoxId: customBoxId, Quantity: 1 });
+                Alert.alert('Thành công', 'Đã thêm giỏ quà vào giỏ hàng.', [
+                    { text: 'Tiếp tục', style: 'cancel' },
+                    { text: 'Tới giỏ hàng', onPress: () => router.push('/(tabs)/cart' as any) }
+                ]);
+            }
         } catch (err: any) {
-            Alert.alert('Lỗi', err.message || 'Không thể thêm vào giỏ hàng.');
+            Alert.alert('Lỗi', err.message || 'Không thể lưu giỏ quà.');
         } finally {
             setSubmitting(false);
         }
@@ -124,12 +156,29 @@ export default function MixMatchScreen() {
         setSubmitting(true);
         try {
             const itemsPayload = buildItemsPayload();
-            const customBoxId = await mixMatchService.createCustomBox(itemsPayload);
-            // Buy now logic: add to cart and then go to checkout
-            // Note: checkout screen might need to be told which item to pay for if there are multiple
-            // For now, mirroring FE logic (which redirects to checkout)
-            await cartService.addToCart({ Type: 1, CustomBoxId: customBoxId, Quantity: 1 });
-            router.push('/checkout' as any);
+            let customBoxId = params.editBoxId;
+            
+            if (isEditMode && customBoxId) {
+                await mixMatchService.updateCustomBox(customBoxId, itemsPayload);
+            } else {
+                customBoxId = await mixMatchService.createCustomBox(itemsPayload);
+            }
+            
+            // Go to checkout-payment directly, passing the custom box details 
+            // instead of adding it to cart and dumping the user in checkout
+            router.push({
+                pathname: '/checkout',
+                params: {
+                    buyNowItems: JSON.stringify([{
+                        Id: `TEMP-${Date.now()}`, // Temporary cart-item like ID
+                        Quantity: 1,
+                        UnitPrice: totals.totalPrice, // We pass the subtotal here
+                        Type: 1, // MIX_MATCH
+                        CustomBoxId: customBoxId,
+                        Name: 'Giỏ quà tự chọn'
+                    }])
+                }
+            });
         } catch (err: any) {
             Alert.alert('Lỗi', err.message || 'Không thể tiến hành thanh toán.');
         } finally {
@@ -227,15 +276,13 @@ export default function MixMatchScreen() {
 
                 {/* Items Grid */}
                 <View style={styles.itemsSection}>
-                    <FlatList
-                        data={filteredItems}
-                        renderItem={renderItemCard}
-                        keyExtractor={(item) => item.Id}
-                        numColumns={2}
-                        scrollEnabled={false}
-                        columnWrapperStyle={styles.row}
-                        contentContainerStyle={styles.itemsList}
-                    />
+                    <View style={styles.itemsGridWrapper}>
+                        {filteredItems.map((item) => (
+                            <View key={item.Id} style={styles.itemCardContainer}>
+                                {renderItemCard({ item })}
+                            </View>
+                        ))}
+                    </View>
                 </View>
             </ScrollView>
 
@@ -309,17 +356,17 @@ const styles = StyleSheet.create({
     categoryText: { fontSize: 13, color: AppColors.textSecondary, fontWeight: '600' },
     categoryTextActive: { color: '#FFF' },
 
-    itemsSection: { padding: Spacing.lg },
-    row: { justifyContent: 'space-between' },
-    itemsList: { paddingBottom: 100 },
+    itemsSection: { padding: Spacing.lg, paddingBottom: 150 },
+    itemsGridWrapper: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+    itemCardContainer: { width: '48%', marginBottom: Spacing.md },
     itemCard: {
-        width: ITEM_CARD_WIDTH, backgroundColor: AppColors.surface,
-        borderRadius: BorderRadius.md, marginBottom: Spacing.md,
+        width: '100%', backgroundColor: AppColors.surface,
+        borderRadius: BorderRadius.md,
         shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
     },
-    itemImageWrap: { width: '100%', aspectRatio: 1, backgroundColor: '#F3F4F6', borderRadius: BorderRadius.md },
-    itemImage: { width: '100%', height: '100%', borderRadius: BorderRadius.md },
+    itemImageWrap: { width: '100%', aspectRatio: 1, backgroundColor: '#F3F4F6', borderTopLeftRadius: BorderRadius.md, borderTopRightRadius: BorderRadius.md },
+    itemImage: { width: '100%', height: '100%', borderTopLeftRadius: BorderRadius.md, borderTopRightRadius: BorderRadius.md },
     itemPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     itemInfo: { padding: 8 },
     itemName: { fontSize: 12, fontWeight: '700', color: AppColors.text, marginBottom: 4 },
