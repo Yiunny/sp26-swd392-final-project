@@ -37,6 +37,15 @@ const sidebarLinks = [
             </svg>
         ),
     },
+    {
+        label: "Giỏ quà custom",
+        to: "/custom-box",
+        icon: (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 3.75l7.5 4.125v8.25L12 20.25l-7.5-4.125v-8.25L12 3.75z" />
+            </svg>
+        ),
+    },
 ];
 
 /* ───── Helper: get stored user data ───── */
@@ -60,7 +69,11 @@ export default function AccountPage() {
 
     // Redirect if not logged in
     useEffect(() => {
-        if (!authService.isAuthenticated()) navigate("/login");
+        if (!authService.isAuthenticated()) {
+            navigate("/login");
+            return;
+        }
+
     }, [navigate]);
 
     /* ── Profile form state ── */
@@ -70,6 +83,7 @@ export default function AccountPage() {
     const [profileMsg, setProfileMsg] = useState("");
     const [profileError, setProfileError] = useState("");
     const [profileLoading, setProfileLoading] = useState(false);
+
 
     /* ── Password form — Formik + Yup ── */
     const [pwServerMsg, setPwServerMsg] = useState("");
@@ -123,7 +137,7 @@ export default function AccountPage() {
         navigate("/login", { state: { message: "Mật khẩu đã được thay đổi. Vui lòng đăng nhập lại." } });
     };
 
-    const handleProfileSubmit = async (e: React.FormEvent) => {
+    const handleProfileSubmit = async (e: React.SyntheticEvent) => {
         e.preventDefault();
         setProfileMsg("");
         setProfileError("");
@@ -165,6 +179,7 @@ export default function AccountPage() {
     return (
         <div className="font-sans bg-[#F5F5F5] min-h-screen flex flex-col">
             <Header />
+
 
             <main className="flex-1 max-w-6xl w-full mx-auto px-6 py-10 lg:py-14">
                 <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-8">

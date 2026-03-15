@@ -14,8 +14,9 @@ public class MixMatchCustomerService : IMixMatchCustomerService
         _context = context;
     }
 
-    public async Task<string> CreateCustomBoxAsync(CreateCustomBoxDTO dto)
+    public async Task<string> CreateCustomBoxAsync(string userId, CreateCustomBoxDTO dto)
     {
+        if (string.IsNullOrWhiteSpace(userId)) throw new ArgumentException("UserId is required");
         if (dto == null || dto.Items == null) throw new ArgumentException("Items are required");
 
         var totalItems = dto.Items.Sum(x => x.Quantity);
@@ -29,7 +30,10 @@ public class MixMatchCustomerService : IMixMatchCustomerService
 
         var customBox = new CustomBox
         {
-            Items = dto.Items.Select(i => new CustomBoxItem { ItemId = i.ItemId, Quantity = i.Quantity }).ToList()
+            UserId = userId,
+            Items = dto.Items.Select(i => new CustomBoxItem { ItemId = i.ItemId, Quantity = i.Quantity }).ToList(),
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         };
 
         decimal totalPrice = 0m;
@@ -47,11 +51,46 @@ public class MixMatchCustomerService : IMixMatchCustomerService
         return customBox.Id;
     }
 
+    public async Task<CustomBoxResponseDTO?> GetCustomBoxByUserAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return null;
+        var box = await _context.CustomBoxes
+            .Where(cb => cb.UserId == userId)
+            .OrderByDescending(cb => cb.CreatedAt)
+            .FirstOrDefaultAsync();
+        if (box == null) return null;
+        return await MapCustomBoxAsync(box);
+    }
+
+    public async Task<List<CustomBoxResponseDTO>> GetCustomBoxesByUserAsync(string userId)
+    {
+        if (string.IsNullOrWhiteSpace(userId)) return new List<CustomBoxResponseDTO>();
+
+        var boxes = await _context.CustomBoxes
+            .Where(cb => cb.UserId == userId)
+            .OrderByDescending(cb => cb.CreatedAt)
+            .ToListAsync();
+
+        if (!boxes.Any()) return new List<CustomBoxResponseDTO>();
+
+        var results = new List<CustomBoxResponseDTO>();
+        foreach (var box in boxes)
+        {
+            results.Add(await MapCustomBoxAsync(box));
+        }
+
+        return results;
+    }
+
     public async Task<CustomBoxResponseDTO?> GetCustomBoxAsync(string id)
     {
         var box = await _context.CustomBoxes.FirstOrDefaultAsync(cb => cb.Id == id);
         if (box == null) return null;
+        return await MapCustomBoxAsync(box);
+    }
 
+    private async Task<CustomBoxResponseDTO> MapCustomBoxAsync(CustomBox box)
+    {
         var itemIds = box.Items.Select(i => i.ItemId).Distinct().ToList();
         var itemsDict = await _context.Items.Where(i => itemIds.Contains(i.Id)).ToDictionaryAsync(i => i.Id);
 
@@ -74,7 +113,8 @@ public class MixMatchCustomerService : IMixMatchCustomerService
             Id = box.Id,
             Items = items,
             TotalItems = box.Items.Sum(x => x.Quantity),
-            TotalPrice = box.TotalPrice
+            TotalPrice = box.TotalPrice,
+            CreatedAt = box.CreatedAt
         };
     }
 }

@@ -329,6 +329,7 @@ namespace ShopHangTet.DTOs
         public int TotalItems { get; set; }
         public decimal TotalPrice { get; set; }
         public List<CustomBoxItemResponseDTO> Items { get; set; } = new();
+        public DateTime CreatedAt { get; set; }
     }
 
     /// Rule cho Mix & Match:
