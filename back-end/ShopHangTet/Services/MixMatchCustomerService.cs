@@ -106,7 +106,8 @@ public class MixMatchCustomerService : IMixMatchCustomerService
                 Name = item?.Name ?? string.Empty,
                 Price = price,
                 Quantity = i.Quantity,
-                Subtotal = price * i.Quantity
+                Subtotal = price * i.Quantity,
+                ImageUrl = item?.Images?.FirstOrDefault()
             };
         }).ToList();
 

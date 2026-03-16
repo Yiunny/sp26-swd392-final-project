@@ -18,7 +18,7 @@ function formatPrice(v: number) {
 }
 
 export default function ProductDetailScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, type } = useLocalSearchParams<{ id: string; type?: string }>();
     const router = useRouter();
 
     const [product, setProduct] = useState<GiftBoxDetailDto | null>(null);
@@ -35,12 +35,12 @@ export default function ProductDetailScreen() {
     useEffect(() => {
         if (!id) return;
         setLoading(true);
-        productService
-            .getGiftBoxById(id)
+        const fetcher = type === 'item' ? productService.getItemByIdAsProduct : productService.getGiftBoxById;
+        fetcher(id)
             .then((data) => { setProduct(data); setSelectedImage(0); })
             .catch(() => setError('Không tìm thấy sản phẩm.'))
             .finally(() => setLoading(false));
-    }, [id]);
+    }, [id, type]);
 
     const handleAddToCart = async () => {
         if (!product || addingToCart) return;
@@ -152,23 +152,27 @@ export default function ProductDetailScreen() {
                     <View style={styles.divider} />
 
                     {/* Quantity */}
-                    <Text style={styles.qtyLabel}>Số lượng</Text>
-                    <View style={styles.qtyControl}>
-                        <TouchableOpacity
-                            style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
-                            onPress={() => setQuantity((q) => Math.max(1, q - 1))}
-                            disabled={quantity <= 1}
-                        >
-                            <Ionicons name="remove" size={18} color={quantity <= 1 ? AppColors.textMuted : AppColors.text} />
-                        </TouchableOpacity>
-                        <Text style={styles.qtyText}>{quantity}</Text>
-                        <TouchableOpacity
-                            style={styles.qtyBtn}
-                            onPress={() => setQuantity((q) => q + 1)}
-                        >
-                            <Ionicons name="add" size={18} color={AppColors.text} />
-                        </TouchableOpacity>
-                    </View>
+                    {type !== 'item' && (
+                        <View>
+                            <Text style={styles.qtyLabel}>Số lượng</Text>
+                            <View style={styles.qtyControl}>
+                                <TouchableOpacity
+                                    style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
+                                    onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+                                    disabled={quantity <= 1}
+                                >
+                                    <Ionicons name="remove" size={18} color={quantity <= 1 ? AppColors.textMuted : AppColors.text} />
+                                </TouchableOpacity>
+                                <Text style={styles.qtyText}>{quantity}</Text>
+                                <TouchableOpacity
+                                    style={styles.qtyBtn}
+                                    onPress={() => setQuantity((q) => q + 1)}
+                                >
+                                    <Ionicons name="add" size={18} color={AppColors.text} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Cart message */}
                     {cartMsg && (
@@ -227,20 +231,25 @@ export default function ProductDetailScreen() {
                 </View>
             </ScrollView>
 
-            {/* Sticky Add to Cart */}
-            <View style={styles.stickyFooter}>
-                <TouchableOpacity
-                    style={[styles.addToCartBtn, addingToCart && styles.btnDisabled]}
-                    onPress={handleAddToCart}
-                    disabled={addingToCart}
-                    activeOpacity={0.85}
-                >
-                    <Ionicons name="cart" size={20} color="#FFF" />
-                    <Text style={styles.addToCartText}>
-                        {addingToCart ? 'Đang thêm...' : 'Thêm vào giỏ'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
+            {/* Sticky info & add to cart */}
+            {type !== 'item' && (
+                <View style={[styles.stickyFooter, { paddingBottom: Platform.OS === 'ios' ? 34 : 16 }]}>
+                    <TouchableOpacity
+                        style={[styles.addToCartBtn, addingToCart && styles.btnDisabled]}
+                        disabled={addingToCart}
+                        onPress={handleAddToCart}
+                    >
+                        {addingToCart ? (
+                            <LoadingSpinner />
+                        ) : (
+                            <>
+                                <Ionicons name="cart-outline" size={20} color="#FFF" />
+                                <Text style={styles.addToCartText}>Thêm vào giỏ hàng • {formatPrice(product.Price * quantity)}</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            )}
         </View>
     );
 }

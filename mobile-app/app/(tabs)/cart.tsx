@@ -98,6 +98,16 @@ export default function CartScreen() {
         }
     };
 
+    const directRemove = async (itemId: string) => {
+        try {
+            await cartService.removeItem(itemId);
+            await fetchCart();
+            Toast.show({ type: 'success', text1: 'Thành công', text2: 'Đã xóa sản phẩm khỏi giỏ hàng.' });
+        } catch {
+            Toast.show({ type: 'error', text1: 'Lỗi', text2: 'Không thể xóa sản phẩm.' });
+        }
+    };
+
     const items = useMemo(() => {
         const cartItems = cart?.Items ?? EMPTY_ITEMS;
         
@@ -167,8 +177,8 @@ export default function CartScreen() {
     };
 
     const renderRightActions = (itemId: string) => (
-        <View style={styles.swipeActions}>
-            <TouchableOpacity onPress={() => handleRemove(itemId)} style={styles.swipeDeleteBtn}>
+        <View style={[styles.swipeActions, { width: 100 }]}>
+            <TouchableOpacity onPress={() => directRemove(itemId)} style={styles.swipeDeleteBtn}>
                 <Ionicons name="trash-outline" size={20} color="#FFF" />
                 <Text style={styles.swipeDeleteText}>Xóa</Text>
             </TouchableOpacity>
@@ -183,7 +193,15 @@ export default function CartScreen() {
         const isDisabledCustomBox = Boolean(isCustomBox && item.CustomBoxId && !activeCustomBoxIds.has(item.CustomBoxId));
 
         return (
-        <Swipeable renderRightActions={() => renderRightActions(item.Id)} overshootRight={false}>
+        <Swipeable 
+            renderRightActions={() => renderRightActions(item.Id)} 
+            overshootRight={true}
+            onSwipeableOpen={(direction) => {
+                if (direction === 'right') {
+                    directRemove(item.Id);
+                }
+            }}
+        >
             <View style={[styles.cartItem, isDisabledCustomBox && { opacity: 0.5 }]}>
                 <TouchableOpacity 
                     onPress={() => !isDisabledCustomBox && toggleSelectItem(item.Id)} 
@@ -201,7 +219,9 @@ export default function CartScreen() {
                     style={{ flex: 1, flexDirection: 'row' }}
                     activeOpacity={0.7}
                     onPress={() => {
-                        if (isCustomBox) {
+                        if (isCustomBox && item.CustomBoxId) {
+                            router.push(`/custom-box/${item.CustomBoxId}` as any);
+                        } else if (isCustomBox) {
                             router.push('/custom-boxes' as any);
                         } else if (isReadyMade && item.ProductId) {
                             router.push(`/product/${item.ProductId}` as any);
@@ -444,12 +464,14 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'flex-end',
         paddingRight: Spacing.lg,
+        height: '100%',
     },
     swipeDeleteBtn: {
         backgroundColor: AppColors.error,
         borderRadius: BorderRadius.sm,
         paddingHorizontal: 16,
         paddingVertical: 10,
+        height: '80%',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 4,

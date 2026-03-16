@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import Toast from 'react-native-toast-message';
 import { AppColors } from '../constants/theme';
 import { mixMatchService, type CustomBoxResponse } from '../services/mixMatchService';
@@ -221,7 +222,11 @@ export default function CustomBoxesScreen() {
           {boxes.map((box) => (
             <View key={box.Id} style={[styles.card, selectedIds[box.Id] && styles.cardSelected]}>
               {/* Card header */}
-              <View style={styles.cardHeader}>
+              <TouchableOpacity 
+                style={styles.cardHeader}
+                activeOpacity={0.7}
+                onPress={() => router.push(`/custom-box/${box.Id}` as any)}
+              >
                 <TouchableOpacity onPress={() => toggleSelect(box.Id)} style={styles.checkbox}>
                   <Ionicons
                     name={selectedIds[box.Id] ? 'checkbox' : 'square-outline'}
@@ -239,7 +244,7 @@ export default function CustomBoxesScreen() {
                     ? new Date(box.CreatedAt).toLocaleDateString('vi-VN')
                     : '--'}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               {/* Items list */}
               <View style={styles.itemsGrid}>
@@ -248,15 +253,24 @@ export default function CustomBoxesScreen() {
                     key={box.Id + '-' + item.ItemId} 
                     style={styles.itemCard}
                     activeOpacity={0.7}
-                    onPress={() => router.push(`/product/${item.ItemId}` as any)}
+                    onPress={() => router.push({ pathname: '/product/[id]', params: { id: item.ItemId, type: 'item' } })}
                   >
-                    <Text style={styles.itemName} numberOfLines={2}>
-                      {item.Name}
-                    </Text>
-                    <Text style={styles.itemMeta}>
-                      SL: {item.Quantity} x {formatPrice(item.Price)}
-                    </Text>
-                    <Text style={styles.itemSubtotal}>{formatPrice(item.Subtotal)}</Text>
+                    <View style={styles.itemImageContainer}>
+                      {item.ImageUrl ? (
+                        <Image source={{ uri: item.ImageUrl }} style={styles.itemImage} contentFit="cover" />
+                      ) : (
+                        <Ionicons name="image-outline" size={24} color={AppColors.border} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text style={styles.itemName} numberOfLines={2}>
+                        {item.Name}
+                      </Text>
+                      <Text style={styles.itemMeta}>
+                        SL: {item.Quantity} x {formatPrice(item.Price)}
+                      </Text>
+                      <Text style={styles.itemSubtotal}>{formatPrice(item.Subtotal)}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -365,18 +379,33 @@ const styles = StyleSheet.create({
   cardDate: { fontSize: 11, color: AppColors.textMuted },
 
   itemsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    flexDirection: 'column',
     marginBottom: 12,
   },
   itemCard: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#F9F9F5',
     borderRadius: 12,
     padding: 12,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#EFEFEA',
-    width: '48%' as any,
+  },
+  itemImageContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    overflow: 'hidden',
+  },
+  itemImage: {
+    width: '100%',
+    height: '100%',
   },
   itemName: {
     fontSize: 13,
@@ -384,12 +413,11 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     marginBottom: 4,
   },
-  itemMeta: { fontSize: 11, color: AppColors.textMuted },
+  itemMeta: { fontSize: 12, color: AppColors.textMuted, marginBottom: 4 },
   itemSubtotal: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: AppColors.primary,
-    marginTop: 6,
   },
 
   cardActions: {
