@@ -321,6 +321,7 @@ namespace ShopHangTet.DTOs
         public decimal Price { get; set; }
         public int Quantity { get; set; }
         public decimal Subtotal { get; set; }
+        public string? ImageUrl { get; set; }
     }
 
     public class CustomBoxResponseDTO

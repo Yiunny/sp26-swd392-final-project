@@ -21,6 +21,7 @@ export interface CustomBoxItemResponse {
     Price: number;
     Quantity: number;
     Subtotal: number;
+    ImageUrl?: string;
 }
 
 export interface CustomBoxResponse {
