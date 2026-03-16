@@ -7,7 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { productService, type GiftBoxDetailDto } from '../../services/productService';
-import { cartService } from '../../services/cartService';
+import { cartService, cartEvents } from '../../services/cartService';
 import { AppColors, Spacing, BorderRadius } from '../../constants/theme';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
@@ -26,6 +26,7 @@ export default function ProductDetailScreen() {
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
+    const [cartQuantity, setCartQuantity] = useState(0);
     const [addingToCart, setAddingToCart] = useState(false);
     const [cartMsg, setCartMsg] = useState<string | null>(null);
     const [cartMsgSuccess, setCartMsgSuccess] = useState(false);
@@ -40,6 +41,37 @@ export default function ProductDetailScreen() {
             .then((data) => { setProduct(data); setSelectedImage(0); })
             .catch(() => setError('Không tìm thấy sản phẩm.'))
             .finally(() => setLoading(false));
+    }, [id, type]);
+
+    useEffect(() => {
+        if (!id || type === 'item') return;
+
+        const syncCartQuantity = async () => {
+            try {
+                const cart = await cartService.getCart();
+                const matched = cart.Items.find((item) =>
+                    item.Type === 0 && (item.GiftBoxId === id || item.ProductId === id || item.Id === id)
+                );
+                if (matched) {
+                    setCartQuantity(matched.Quantity);
+                    setQuantity(matched.Quantity);
+                } else {
+                    setCartQuantity(0);
+                    setQuantity(1);
+                }
+            } catch {
+                // ignore cart sync errors
+            }
+        };
+
+        syncCartQuantity();
+        const stop = cartEvents.subscribe(() => {
+            syncCartQuantity();
+        });
+
+        return () => {
+            stop();
+        };
     }, [id, type]);
 
     const handleAddToCart = async () => {
@@ -154,7 +186,12 @@ export default function ProductDetailScreen() {
                     {/* Quantity */}
                     {type !== 'item' && (
                         <View>
-                            <Text style={styles.qtyLabel}>Số lượng</Text>
+                            <View style={styles.qtyHeaderRow}>
+                                <Text style={styles.qtyLabel}>Số lượng</Text>
+                                {cartQuantity > 0 && (
+                                    <Text style={styles.qtyInCart}>Đã có {cartQuantity} trong giỏ hàng</Text>
+                                )}
+                            </View>
                             <View style={styles.qtyControl}>
                                 <TouchableOpacity
                                     style={[styles.qtyBtn, quantity <= 1 && styles.qtyBtnDisabled]}
@@ -318,9 +355,20 @@ const styles = StyleSheet.create({
     description: { fontSize: 14, color: AppColors.textSecondary, lineHeight: 22, marginBottom: 16 },
     divider: { height: 1, backgroundColor: AppColors.border, marginVertical: 16 },
 
+    qtyHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
     qtyLabel: {
         fontSize: 11, fontWeight: '700', color: AppColors.textMuted,
-        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8,
+        textTransform: 'uppercase', letterSpacing: 1,
+    },
+    qtyInCart: {
+        fontSize: 11,
+        color: AppColors.primary,
+        fontWeight: '600',
     },
     qtyControl: {
         flexDirection: 'row', alignItems: 'center', borderWidth: 1,

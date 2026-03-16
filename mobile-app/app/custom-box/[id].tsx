@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -199,7 +200,10 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 36,
+    paddingTop:
+      Platform.OS === 'ios'
+        ? 50
+        : (StatusBar.currentHeight ?? 0) + 12,
     paddingBottom: 16,
     paddingHorizontal: Spacing.lg,
     backgroundColor: '#FFF',
