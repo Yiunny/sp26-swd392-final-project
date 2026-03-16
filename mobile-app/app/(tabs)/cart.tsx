@@ -99,11 +99,16 @@ export default function CartScreen() {
     };
 
     const directRemove = async (itemId: string) => {
+        if (!cart) return;
+        const previousItems = cart.Items;
+        const nextItems = previousItems.filter((item) => item.Id !== itemId);
+        setCart({ ...cart, Items: nextItems, TotalAmount: nextItems.reduce((sum, item) => sum + item.UnitPrice * item.Quantity, 0) });
+
         try {
             await cartService.removeItem(itemId);
-            await fetchCart();
             Toast.show({ type: 'success', text1: 'Thành công', text2: 'Đã xóa sản phẩm khỏi giỏ hàng.' });
         } catch {
+            setCart({ ...cart, Items: previousItems });
             Toast.show({ type: 'error', text1: 'Lỗi', text2: 'Không thể xóa sản phẩm.' });
         }
     };
@@ -195,7 +200,10 @@ export default function CartScreen() {
         return (
         <Swipeable 
             renderRightActions={() => renderRightActions(item.Id)} 
-            overshootRight={true}
+            overshootRight={false}
+            friction={1.1}
+            rightThreshold={50}
+            useNativeAnimations
             onSwipeableOpen={(direction) => {
                 if (direction === 'right') {
                     directRemove(item.Id);
