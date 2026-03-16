@@ -39,6 +39,11 @@ public class OrderModel
     
     // Order status
     public OrderStatus Status { get; set; } = OrderStatus.PAYMENT_CONFIRMING;
+
+    // Payment tracking
+    public string? PaymentMethod { get; set; }
+    public DateTime? PaymentDate { get; set; }
+    public string? TransactionReference { get; set; }
     
     // Tracking
     public List<OrderStatusHistory> StatusHistory { get; set; } = new();

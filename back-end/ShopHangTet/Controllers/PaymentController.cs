@@ -4,6 +4,7 @@ using ShopHangTet.DTOs;
 using ShopHangTet.Models;
 using System.Text.RegularExpressions;
 using System.Net;
+using System.Globalization;
 
 namespace ShopHangTet.Controllers;
 
@@ -54,6 +55,10 @@ public class PaymentController : ControllerBase
             _logger.LogInformation("SePay webhook received: TransferType={Type}, Amount={Amount}, Content={Content}",
                 data.TransferType, data.TransferAmount, data.Content);
 
+            // Additional debug info to help triage missed updates in production logs
+            _logger.LogInformation("SePay webhook raw: Id={Id}, Reference={Reference}, Gateway={Gateway}, Account={Account}",
+                data.Id, data.ReferenceCode, data.Gateway, data.AccountNumber);
+
             // 1. Chỉ xử lý nếu là tiền vào
             if (!string.Equals(data.TransferType, "in", StringComparison.OrdinalIgnoreCase))
             {
@@ -72,12 +77,50 @@ public class PaymentController : ControllerBase
             _logger.LogInformation("Found order code: {OrderCode}, Amount: {Amount}", orderCode, data.TransferAmount);
 
             // 4. Gọi service xác nhận thanh toán và cập nhật trạng thái + trừ kho
-            var result = await _orderService.ConfirmPaymentAsync(orderCode, data.TransferAmount);
+            DateTime? paymentDate = null;
+            if (!string.IsNullOrWhiteSpace(data.TransactionDate)
+                && DateTime.TryParse(data.TransactionDate, CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeLocal | DateTimeStyles.AdjustToUniversal, out var parsedPaymentDate))
+            {
+                paymentDate = parsedPaymentDate;
+            }
+
+            var result = await _orderService.ConfirmPaymentAsync(
+                orderCode,
+                data.TransferAmount,
+                paymentMethod: "BANK_TRANSFER",
+                transactionReference: data.ReferenceCode,
+                paymentDate: paymentDate,
+                gateway: data.Gateway);
 
             if (result)
+            {
                 _logger.LogInformation("Payment confirmed for order: {OrderCode}", orderCode);
+            }
             else
+            {
                 _logger.LogWarning("Payment confirmation failed for order: {OrderCode} (not found, wrong status, or insufficient amount)", orderCode);
+
+                // Fetch current order snapshot to provide more context in logs
+                try
+                {
+                    var orderSnapshot = await _orderService.GetOrderByCodeAsync(orderCode);
+                    if (orderSnapshot == null)
+                    {
+                        _logger.LogWarning("ConfirmPayment: Order {OrderCode} not found in DB. Reference={Reference}, TransId={Id}",
+                            orderCode, data.ReferenceCode, data.Id);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("ConfirmPayment: Order {OrderCode} exists with Status={Status}, CreatedAt={CreatedAt}, TotalAmount={TotalAmount}. Reference={Reference}, TransId={Id}",
+                            orderCode, orderSnapshot.Status, orderSnapshot.CreatedAt, orderSnapshot.TotalAmount, data.ReferenceCode, data.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to read order snapshot for {OrderCode} after ConfirmPayment failure", orderCode);
+                }
+            }
 
             // Luôn trả về 200 để SePay dừng gửi lại
             return Ok(new { success = true, status = 200 });

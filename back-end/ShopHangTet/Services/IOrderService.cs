@@ -28,7 +28,13 @@ namespace ShopHangTet.Services
 
         // === SePay Payment ===
         /// Xác nhận thanh toán từ SePay webhook - cập nhật trạng thái và trừ kho
-        Task<bool> ConfirmPaymentAsync(string orderCode, decimal amountPaid);
+        Task<bool> ConfirmPaymentAsync(
+            string orderCode,
+            decimal amountPaid,
+            string paymentMethod = "SePay",
+            string? transactionReference = null,
+            DateTime? paymentDate = null,
+            string? gateway = null);
         /// Lấy đơn hàng theo mã đơn (cho frontend polling)
         Task<OrderModel?> GetOrderByCodeAsync(string orderCode);
 
