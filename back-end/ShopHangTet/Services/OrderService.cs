@@ -200,7 +200,13 @@ namespace ShopHangTet.Services
         }
 
         /// Xác nhận thanh toán từ SePay webhook
-        public async Task<bool> ConfirmPaymentAsync(string orderCode, decimal amountPaid)
+        public async Task<bool> ConfirmPaymentAsync(
+            string orderCode,
+            decimal amountPaid,
+            string paymentMethod = "SePay",
+            string? transactionReference = null,
+            DateTime? paymentDate = null,
+            string? gateway = null)
         {
             var order = await _context.Orders
                 .FirstOrDefaultAsync(o => o.OrderCode == orderCode);
@@ -258,14 +264,28 @@ namespace ShopHangTet.Services
             // 1. Chuyển kho từ Reserved sang Deducted (xác nhận trừ)
             await DeductReservedInventoryAsync(order, "SePay-Webhook");
 
-            // 2. Cập nhật trạng thái sang PREPARING
+            var normalizedMethod = string.IsNullOrWhiteSpace(paymentMethod) ? "SePay" : paymentMethod.Trim();
+            var paidAt = paymentDate ?? DateTime.UtcNow;
+
+            // 2. Persist payment metadata for reconciliation and support
+            order.PaymentMethod = normalizedMethod;
+            order.PaymentDate = paidAt;
+            order.TransactionReference = string.IsNullOrWhiteSpace(transactionReference)
+                ? null
+                : transactionReference.Trim();
+
+            // 3. Cập nhật trạng thái sang PREPARING
+            var noteGateway = string.IsNullOrWhiteSpace(gateway) ? normalizedMethod : gateway.Trim();
+            var noteReference = string.IsNullOrWhiteSpace(order.TransactionReference)
+                ? "N/A"
+                : order.TransactionReference;
             order.Status = OrderStatus.PREPARING;
             order.StatusHistory.Add(new OrderStatusHistory
             {
                 Status = OrderStatus.PREPARING,
                 Timestamp = DateTime.UtcNow,
                 UpdatedBy = "SePay-Webhook",
-                Notes = $"Thanh toán xác nhận tự động qua SePay. Số tiền: {amountPaid:N0} VND"
+                Notes = $"Thanh toán xác nhận tự động qua {noteGateway}. Số tiền: {amountPaid:N0} VND. Ref: {noteReference}"
             });
             order.UpdatedAt = DateTime.UtcNow;
 
