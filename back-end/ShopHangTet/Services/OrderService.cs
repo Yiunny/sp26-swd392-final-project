@@ -242,11 +242,24 @@ namespace ShopHangTet.Services
             page = page <= 0 ? 1 : page;
             pageSize = pageSize <= 0 ? 20 : pageSize;
 
-            // Mongo EF provider có thể lỗi khi translate ToLower/Contains/enum parse.
-            // Lấy dữ liệu trước rồi filter in-memory để tránh 500 runtime do provider translation.
-            var allOrders = await _context.Orders
-                .OrderByDescending(o => o.CreatedAt)
-                .ToListAsync();
+            List<OrderModel> allOrders;
+            try
+            {
+                // Mongo EF provider có thể lỗi khi translate với một số trường embedded/null.
+                // Lấy dữ liệu trước rồi filter in-memory để tránh 500 runtime do provider translation.
+                allOrders = await _context.Orders
+                    .AsNoTracking()
+                    .OrderByDescending(o => o.CreatedAt)
+                    .ToListAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetAllOrdersAsync failed via EF provider. Falling back to raw Mongo collection.");
+                allOrders = await _ordersCollection
+                    .Find(Builders<OrderModel>.Filter.Empty)
+                    .SortByDescending(o => o.CreatedAt)
+                    .ToListAsync();
+            }
 
             IEnumerable<OrderModel> filtered = allOrders;
 
