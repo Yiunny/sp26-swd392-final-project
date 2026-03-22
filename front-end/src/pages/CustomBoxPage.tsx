@@ -57,6 +57,7 @@ export default function CustomBoxPage() {
     const [selectedBoxIds, setSelectedBoxIds] = useState<Record<string, boolean>>({});
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!authService.isAuthenticated()) {
@@ -65,7 +66,7 @@ export default function CustomBoxPage() {
         }
         const loadCustomBoxes = async () => {
             setLoading(true);
-            setLoading(true);
+            setError(null);
             try {
                 const res = await mixMatchService.getMyCustomBoxes();
                 const payload = res?.Data ?? res?.data ?? res ?? [];
@@ -80,7 +81,7 @@ export default function CustomBoxPage() {
                 if (err?.status === 404) {
                     setCustomBoxes([]);
                 } else {
-                    toast.error(err?.message ?? "Không thể tải giỏ quà custom.");
+                    setError(err?.message ?? "Không thể tải giỏ quà custom.");
                 }
             } finally {
                 setLoading(false);
@@ -125,11 +126,12 @@ export default function CustomBoxPage() {
             .map(([id]) => id);
 
         if (selectedIds.length === 0) {
-            toast.error("Vui lòng chọn ít nhất một giỏ quà custom để thêm vào giỏ hàng.");
+            setError("Vui lòng chọn ít nhất một giỏ quà custom để thêm vào giỏ hàng.");
             return;
         }
 
         setSubmitting(true);
+        setError(null);
         try {
             await cartService.addToCartBatch(
                 selectedIds.map((id) => ({
@@ -146,7 +148,7 @@ export default function CustomBoxPage() {
                 return next;
             });
         } catch (err: any) {
-            toast.error(err?.message ?? "Không thể thêm giỏ quà vào giỏ hàng.");
+            setError(err?.message ?? "Không thể thêm giỏ quà vào giỏ hàng.");
         } finally {
             setSubmitting(false);
         }
@@ -233,6 +235,10 @@ export default function CustomBoxPage() {
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                 </svg>
+                            </div>
+                        ) : error ? (
+                            <div className="bg-white rounded-2xl p-8 shadow-sm">
+                                <p className="text-sm text-red-600">{error}</p>
                             </div>
                         ) : customBoxes.length === 0 ? (
                             <div className="bg-white rounded-2xl p-12 shadow-sm text-center">

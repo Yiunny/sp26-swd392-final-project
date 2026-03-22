@@ -173,12 +173,6 @@ export default function MixMatchPage() {
     };
 
     const handleCreateCustomBox = async () => {
-        const validationError = validateMixMatchRules();
-        if (validationError) {
-            toast.error(validationError);
-            return;
-        }
-
         setIsSubmitting(true);
         const itemsPayload = buildItemsPayload();
         try {
@@ -200,12 +194,6 @@ export default function MixMatchPage() {
     };
 
     const handleAddToCart = async () => {
-        const validationError = validateMixMatchRules();
-        if (validationError) {
-            toast.error(validationError);
-            return;
-        }
-
         setIsSubmitting(true);
         const itemsPayload = buildItemsPayload();
         try {
@@ -228,12 +216,6 @@ export default function MixMatchPage() {
     };
 
     const handleBuyNow = async () => {
-        const validationError = validateMixMatchRules();
-        if (validationError) {
-            toast.error(validationError);
-            return;
-        }
-
         setIsSubmitting(true);
         const itemsPayload = buildItemsPayload();
         try {
