@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     View, Text, ScrollView, TextInput, TouchableOpacity,
     StyleSheet, Alert, Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/authService';
@@ -11,7 +11,27 @@ import { AppColors, Spacing, BorderRadius } from '../../constants/theme';
 
 export default function AccountScreen() {
     const router = useRouter();
-    const { user, isAuthenticated, logout } = useAuth();
+    const { user, isAuthenticated, logout, validateSession } = useAuth();
+
+    useFocusEffect(
+        useCallback(() => {
+            let isMounted = true;
+
+            const runValidation = async () => {
+                const ok = await validateSession();
+                if (!ok && isMounted) {
+                    Alert.alert('Phiên đăng nhập hết hạn', 'Tài khoản có thể đã bị xóa hoặc không còn hợp lệ. Vui lòng đăng nhập lại.');
+                    router.replace('/login' as any);
+                }
+            };
+
+            runValidation();
+
+            return () => {
+                isMounted = false;
+            };
+        }, [router, validateSession]),
+    );
 
     const initials = user?.FullName?.charAt(0).toUpperCase() || 'U';
 

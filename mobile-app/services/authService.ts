@@ -4,6 +4,7 @@ import type {
     RegisterRequest,
     RegisterResponse,
     LoginRequest,
+    GoogleLoginRequest,
     LoginResponse,
     ApiResponse,
     User,
@@ -12,6 +13,16 @@ import type {
 const AUTH_ENDPOINT = '/Auth';
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
+
+const normalizeUser = (input: any): User => ({
+    Id: input?.Id ?? input?.id ?? '',
+    Email: input?.Email ?? input?.email ?? '',
+    FullName: input?.FullName ?? input?.fullName ?? '',
+    Phone: input?.Phone ?? input?.phone ?? '',
+    Role: Number(input?.Role ?? input?.role ?? 0),
+    Status: Number(input?.Status ?? input?.status ?? 0),
+    CreatedAt: input?.CreatedAt ?? input?.createdAt ?? new Date().toISOString(),
+});
 
 export const authService = {
     register: async (data: RegisterRequest): Promise<RegisterResponse> => {
@@ -37,6 +48,21 @@ export const authService = {
         return result;
     },
 
+    loginWithGoogle: async (data: GoogleLoginRequest): Promise<LoginResponse> => {
+        const response = await apiClient.post<LoginResponse>(
+            `${AUTH_ENDPOINT}/google-login`,
+            data,
+        );
+        const result = response.data;
+
+        if (result.Success && result.Data) {
+            await AsyncStorage.setItem(TOKEN_KEY, result.Data.Token);
+            await AsyncStorage.setItem(USER_KEY, JSON.stringify(result.Data.User));
+        }
+
+        return result;
+    },
+
     logout: async () => {
         await AsyncStorage.removeItem(TOKEN_KEY);
         await AsyncStorage.removeItem(USER_KEY);
@@ -47,12 +73,57 @@ export const authService = {
     },
 
     getUser: async (): Promise<User | null> => {
+        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        if (!token) return null;
+
+        try {
+            const response = await apiClient.get<ApiResponse<User>>(`${AUTH_ENDPOINT}/me`);
+            const result = response.data;
+
+            if (result.Success && result.Data) {
+                const normalized = normalizeUser(result.Data);
+                await AsyncStorage.setItem(USER_KEY, JSON.stringify(normalized));
+                return normalized;
+            }
+        } catch {
+            // fallback to cached user for temporary network failure
+        }
+
         const raw = await AsyncStorage.getItem(USER_KEY);
         if (!raw) return null;
         try {
             return JSON.parse(raw) as User;
         } catch {
             return null;
+        }
+    },
+
+    validateSession: async (): Promise<boolean> => {
+        const token = await AsyncStorage.getItem(TOKEN_KEY);
+        if (!token) return false;
+
+        try {
+            const response = await apiClient.get<ApiResponse<User>>(`${AUTH_ENDPOINT}/me`);
+            const result = response.data;
+            const isValid = !!(result.Success && result.Data);
+
+            if (isValid) {
+                const normalized = normalizeUser(result.Data);
+                await AsyncStorage.setItem(USER_KEY, JSON.stringify(normalized));
+                return true;
+            }
+
+            await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+            return false;
+        } catch (error: any) {
+            const status = error?.status;
+            if (status === 401 || status === 404 || status === 403) {
+                await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+                return false;
+            }
+
+            // keep session on transient network/server errors
+            return true;
         }
     },
 
