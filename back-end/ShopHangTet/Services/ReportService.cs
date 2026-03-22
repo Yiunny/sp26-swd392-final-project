@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 using ShopHangTet.Data;
 using ShopHangTet.DTOs;
 using ShopHangTet.Models;
@@ -9,10 +10,45 @@ namespace ShopHangTet.Services;
 public class ReportService : IReportService
 {
     private readonly ShopHangTetDbContext _context;
+    private readonly ILogger<ReportService> _logger;
+    private readonly IMongoCollection<OrderModel> _ordersCollection;
 
-    public ReportService(ShopHangTetDbContext context)
+    public ReportService(ShopHangTetDbContext context, ILogger<ReportService> logger, IMongoDatabase mongoDatabase)
     {
         _context = context;
+        _logger = logger;
+        _ordersCollection = mongoDatabase.GetCollection<OrderModel>("Orders");
+    }
+
+    private async Task<List<OrderModel>> GetOrdersWithFallbackAsync()
+    {
+        var efOrders = await _context.Orders.AsNoTracking().ToListAsync();
+
+        if (efOrders.Count > 0)
+        {
+            return efOrders;
+        }
+
+        try
+        {
+            var mongoOrders = await _ordersCollection
+                .Find(Builders<OrderModel>.Filter.Empty)
+                .ToListAsync();
+
+            if (mongoOrders.Count > 0)
+            {
+                _logger.LogWarning(
+                    "Report fallback activated: EF returned 0 orders, raw Mongo collection returned {Count} orders.",
+                    mongoOrders.Count);
+            }
+
+            return mongoOrders;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Report fallback query on Mongo Orders collection failed.");
+            return efOrders;
+        }
     }
 
     public async Task<DashboardReportDTO> GetDashboardAsync()
@@ -21,17 +57,18 @@ public class ReportService : IReportService
         var recentFrom = now.AddDays(-30);
         var prevFrom = recentFrom.AddDays(-30);
 
-        var recentOrders = await _context.Orders.Where(o => o.CreatedAt >= recentFrom).ToListAsync();
-        var prevOrders = await _context.Orders.Where(o => o.CreatedAt >= prevFrom && o.CreatedAt < recentFrom).ToListAsync();
+        var allOrders = await GetOrdersWithFallbackAsync();
+        var recentOrders = allOrders.Where(o => o.CreatedAt >= recentFrom).ToList();
+        var prevOrders = allOrders.Where(o => o.CreatedAt >= prevFrom && o.CreatedAt < recentFrom).ToList();
 
         var recentRevenue = recentOrders.Sum(o => o.TotalAmount);
         var prevRevenue = prevOrders.Sum(o => o.TotalAmount);
 
-        double revenueGrowth = prevRevenue <= 0 ? 100.0 : (double)((recentRevenue - prevRevenue) / prevRevenue * 100);
+        double revenueGrowth = prevRevenue <= 0 ? (recentRevenue <= 0 ? 0 : 100.0) : (double)((recentRevenue - prevRevenue) / prevRevenue * 100);
 
         var recentOrderCount = recentOrders.Count;
         var prevOrderCount = prevOrders.Count;
-        double orderGrowth = prevOrderCount <= 0 ? 100.0 : (double)((recentOrderCount - prevOrderCount) / (double)prevOrderCount * 100);
+        double orderGrowth = prevOrderCount <= 0 ? (recentOrderCount <= 0 ? 0 : 100.0) : (double)((recentOrderCount - prevOrderCount) / (double)prevOrderCount * 100);
 
         var b2c = recentOrders.Count(o => o.OrderType == OrderType.B2C);
         var b2b = recentOrders.Count(o => o.OrderType == OrderType.B2B);
@@ -40,12 +77,12 @@ public class ReportService : IReportService
 
         var statusSummary = new ReportStatusSummaryDTO
         {
-            PendingPayment = await _context.Orders.CountAsync(o => o.Status == OrderStatus.PAYMENT_CONFIRMING),
-            Preparing = await _context.Orders.CountAsync(o => o.Status == OrderStatus.PREPARING),
-            Shipping = await _context.Orders.CountAsync(o => o.Status == OrderStatus.SHIPPING),
-            Completed = await _context.Orders.CountAsync(o => o.Status == OrderStatus.COMPLETED),
-            Cancelled = await _context.Orders.CountAsync(o => o.Status == OrderStatus.CANCELLED),
-            DeliveryFailed = await _context.Orders.CountAsync(o => o.Status == OrderStatus.DELIVERY_FAILED)
+            PendingPayment = allOrders.Count(o => o.Status == OrderStatus.PAYMENT_CONFIRMING),
+            Preparing = allOrders.Count(o => o.Status == OrderStatus.PREPARING),
+            Shipping = allOrders.Count(o => o.Status == OrderStatus.SHIPPING),
+            Completed = allOrders.Count(o => o.Status == OrderStatus.COMPLETED),
+            Cancelled = allOrders.Count(o => o.Status == OrderStatus.CANCELLED),
+            DeliveryFailed = allOrders.Count(o => o.Status == OrderStatus.DELIVERY_FAILED)
         };
 
         return new DashboardReportDTO
@@ -65,18 +102,22 @@ public class ReportService : IReportService
         var start = fromDate ?? DateTime.UtcNow.AddMonths(-1);
         var end = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
 
-        var ordersQuery = _context.Orders.AsQueryable();
-        if (!string.IsNullOrWhiteSpace(orderType) && Enum.TryParse<OrderType>(orderType, true, out var ot))
-            ordersQuery = ordersQuery.Where(o => o.OrderType == ot);
+        var allOrders = await GetOrdersWithFallbackAsync();
 
-        var orders = await ordersQuery.Where(o => o.CreatedAt >= start && o.CreatedAt <= end).ToListAsync();
+        IEnumerable<OrderModel> filteredOrders = allOrders;
+        if (!string.IsNullOrWhiteSpace(orderType) && Enum.TryParse<OrderType>(orderType, true, out var ot))
+        {
+            filteredOrders = filteredOrders.Where(o => o.OrderType == ot);
+        }
+
+        var orders = filteredOrders.Where(o => o.CreatedAt >= start && o.CreatedAt <= end).ToList();
         var totalRevenue = orders.Sum(o => o.TotalAmount);
 
         var prevStart = start.AddYears(-1);
         var prevEnd = end.AddYears(-1);
-        var prevOrders = await ordersQuery.Where(o => o.CreatedAt >= prevStart && o.CreatedAt <= prevEnd).ToListAsync();
+        var prevOrders = filteredOrders.Where(o => o.CreatedAt >= prevStart && o.CreatedAt <= prevEnd).ToList();
         var prevRevenue = prevOrders.Sum(o => o.TotalAmount);
-        double growth = prevRevenue <= 0 ? 100.0 : (double)((totalRevenue - prevRevenue) / prevRevenue * 100);
+        double growth = prevRevenue <= 0 ? (totalRevenue <= 0 ? 0 : 100.0) : (double)((totalRevenue - prevRevenue) / prevRevenue * 100);
 
         var chart = new List<RevenueReportChartItemDTO>();
         if (view == "month")
@@ -121,7 +162,7 @@ public class ReportService : IReportService
 
     public async Task<List<CollectionPerformanceItemDTO>> GetCollectionsPerformanceAsync()
     {
-        var orders = await _context.Orders.ToListAsync();
+        var orders = await GetOrdersWithFallbackAsync();
         var giftBoxes = await _context.GiftBoxes.ToDictionaryAsync(g => g.Id);
         var collections = await _context.Collections.ToDictionaryAsync(c => c.Id);
 
@@ -163,14 +204,14 @@ public class ReportService : IReportService
 
     public async Task<List<GiftBoxPerformanceItemDTO>> GetGiftBoxPerformanceAsync()
     {
-        var orders = await _context.Orders.ToListAsync();
+        var orders = await GetOrdersWithFallbackAsync();
         var giftBoxes = await _context.GiftBoxes.ToListAsync();
         var reviews = await _context.Reviews.Where(r => r.Status == "APPROVED").ToListAsync();
 
         var dict = new Dictionary<string, (string name, string? image, int sold, decimal revenue, List<int> ratings)>();
         foreach (var g in giftBoxes) dict[g.Id] = (g.Name, (g.Images != null && g.Images.Any()) ? g.Images.FirstOrDefault() : null, 0, 0m, new List<int>());
 
-            foreach (var o in orders)
+        foreach (var o in orders)
         {
             foreach (var it in o.Items)
             {
@@ -208,7 +249,8 @@ public class ReportService : IReportService
     {
         var now = DateTime.UtcNow;
         var oneYearAgo = now.AddYears(-1);
-        var orders = await _context.Orders.Where(o => o.CreatedAt >= oneYearAgo).ToListAsync();
+        var allOrders = await GetOrdersWithFallbackAsync();
+        var orders = allOrders.Where(o => o.CreatedAt >= oneYearAgo).ToList();
 
         var b2cOrders = orders.Where(o => o.OrderType == OrderType.B2C).ToList();
         var b2bOrders = orders.Where(o => o.OrderType == OrderType.B2B).ToList();
@@ -324,5 +366,4 @@ public class ReportService : IReportService
         var r = 2; foreach (var i in list) { ws.Cell(r, 1).Value = i.ItemId; ws.Cell(r, 2).Value = i.ItemName; ws.Cell(r, 3).Value = i.Stock; ws.Cell(r, 4).Value = i.Threshold; r++; }
         using var ms = new MemoryStream(); wb.SaveAs(ms); return ms.ToArray();
     }
-
 }
