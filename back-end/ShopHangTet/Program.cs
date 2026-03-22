@@ -14,7 +14,23 @@ var builder = WebApplication.CreateBuilder(args);
 // Lấy Connection String
 var mongoConnectionString = builder.Configuration.GetConnectionString("MongoConnection")
     ?? throw new InvalidOperationException("MongoDB connection string is required. Set ConnectionStrings:MongoConnection in appsettings.json.");
-var mongoDatabaseName = builder.Configuration["Mongo:DatabaseName"] ?? "ShopHangTetDb";
+
+// Database name: ưu tiên Mongo:DatabaseName / MONGO_DATABASE_NAME,
+// nếu không có thì lấy từ connection string (mongodb://.../dbName).
+// Tránh fallback cứng vì rất dễ trỏ nhầm DB và API trả rỗng dù dữ liệu có tồn tại.
+var mongoDatabaseName = builder.Configuration["Mongo:DatabaseName"]
+    ?? builder.Configuration["MONGO_DATABASE_NAME"]
+    ?? MongoUrl.Create(mongoConnectionString).DatabaseName;
+
+if (string.IsNullOrWhiteSpace(mongoDatabaseName))
+{
+    throw new InvalidOperationException(
+        "Mongo database name is missing. Please set Mongo:DatabaseName (or MONGO_DATABASE_NAME), " +
+        "or include database name in MongoConnection string (mongodb+srv://.../YourDbName)."
+    );
+}
+
+Console.WriteLine($"[Startup] Mongo database in use: {mongoDatabaseName}");
 
 //Thêm Controllers
 builder.Services.AddControllers()
@@ -78,7 +94,12 @@ builder.Services.AddAuthorization();
 
 //Cấu hình CORS (Cho phép Vue.js truy cập API)
 // Lấy chuỗi CORS
-var origins = builder.Configuration["Cors:Origins"]?.Split(',') ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+var origins = builder.Configuration["Cors:Origins"]?.Split(',') ?? new[]
+{
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "https://shophangtet-web.onrender.com"
+};
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp",
