@@ -22,34 +22,28 @@ public class ReportService : IReportService
 
     public async Task<DashboardReportDTO> GetDashboardAsync()
     {
-        try
-        {
-            var now = DateTime.UtcNow;
-            var today = now.Date;
-            var recentFrom = now.AddDays(-30);
-            var prevFrom = recentFrom.AddDays(-30);
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var recentFrom = now.AddDays(-30);
+        var prevFrom = recentFrom.AddDays(-30);
 
-            var allRecentOrders = await _context.Orders
-                .AsNoTracking()
-                .Where(o => o.CreatedAt >= prevFrom)
-                .ToListAsync();
-
-            var recentOrders = allRecentOrders.Where(o => o.CreatedAt >= recentFrom).ToList();
-            var prevOrders = allRecentOrders.Where(o => o.CreatedAt >= prevFrom && o.CreatedAt < recentFrom).ToList();
+        var allRecentOrders = await _context.Orders.Where(o => o.CreatedAt >= prevFrom).ToListAsync();
+        var recentOrders = allRecentOrders.Where(o => o.CreatedAt >= recentFrom).ToList();
+        var prevOrders = allRecentOrders.Where(o => o.CreatedAt >= prevFrom && o.CreatedAt < recentFrom).ToList();
 
             var recentRevenue = recentOrders.Sum(o => o.TotalAmount);
             var prevRevenue = prevOrders.Sum(o => o.TotalAmount);
 
             double revenueGrowth = prevRevenue <= 0 ? 100.0 : (double)((recentRevenue - prevRevenue) / prevRevenue * 100);
 
-            var recentOrderCount = recentOrders.Count;
-            var prevOrderCount = prevOrders.Count;
-            double orderGrowth = prevOrderCount <= 0 ? 100.0 : (double)((recentOrderCount - prevOrderCount) / (double)prevOrderCount * 100);
+        var recentOrderCount = recentOrders.Count;
+        var prevOrderCount = prevOrders.Count;
+        double orderGrowth = prevOrderCount <= 0 ? 100.0 : (double)((recentOrderCount - prevOrderCount) / (double)prevOrderCount * 100);
 
-            // Today's stats
-            var todayOrders = recentOrders.Where(o => o.CreatedAt.Date == today).ToList();
-            var todayRevenue = todayOrders.Sum(o => o.TotalAmount);
-            var todayOrderCount = todayOrders.Count;
+        // Today's stats
+        var todayOrders = recentOrders.Where(o => o.CreatedAt.Date == today).ToList();
+        var todayRevenue = todayOrders.Sum(o => o.TotalAmount);
+        var todayOrderCount = todayOrders.Count;
 
             var b2c = recentOrders.Count(o => o.OrderType == OrderType.B2C);
             var b2b = recentOrders.Count(o => o.OrderType == OrderType.B2B);
@@ -67,24 +61,18 @@ public class ReportService : IReportService
                 DeliveryFailed = allOrders.Count(o => o.Status == OrderStatus.DELIVERY_FAILED)
             };
 
-            return new DashboardReportDTO
-            {
-                TotalRevenue = recentRevenue,
-                RevenueGrowthPercent = Math.Round(revenueGrowth, 2),
-                TotalOrders = recentOrderCount,
-                OrderGrowthPercent = Math.Round(orderGrowth, 2),
-                TodayRevenue = todayRevenue,
-                TodayOrders = todayOrderCount,
-                B2CPercent = Math.Round(b2cPercent, 2),
-                B2BPercent = Math.Round(b2bPercent, 2),
-                StatusSummary = statusSummary
-            };
-        }
-        catch (Exception ex)
+        return new DashboardReportDTO
         {
-            _logger.LogError(ex, "ReportService.GetDashboardAsync failed");
-            return new DashboardReportDTO();
-        }
+            TotalRevenue = recentRevenue,
+            RevenueGrowthPercent = Math.Round(revenueGrowth, 2),
+            TotalOrders = recentOrderCount,
+            OrderGrowthPercent = Math.Round(orderGrowth, 2),
+            TodayRevenue = todayRevenue,
+            TodayOrders = todayOrderCount,
+            B2CPercent = Math.Round(b2cPercent, 2),
+            B2BPercent = Math.Round(b2bPercent, 2),
+            StatusSummary = statusSummary
+        };
     }
 
     public async Task<RevenueReportDTO> GetRevenueAsync(DateTime? fromDate, DateTime? toDate, string view, string? orderType)
