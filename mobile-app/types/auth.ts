@@ -14,6 +14,10 @@ export interface LoginRequest {
     password: string;
 }
 
+export interface GoogleLoginRequest {
+    idToken: string;
+}
+
 // ──────────────────────────────────────────────
 // API Response types (actual back-end format)
 // ──────────────────────────────────────────────

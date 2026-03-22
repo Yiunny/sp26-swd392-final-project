@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -8,21 +8,35 @@ import {
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
-    Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { useAuth } from '../contexts/AuthContext';
 import { AppColors, Spacing, BorderRadius } from '../constants/theme';
 import type { ApiError } from '../types/auth';
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
     const router = useRouter();
-    const { login } = useAuth();
+    const { login, loginWithGoogle } = useAuth();
+
+    const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+    const googleAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+    const googleIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        webClientId: googleWebClientId,
+        androidClientId: googleAndroidClientId,
+        iosClientId: googleIosClientId,
+    });
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null);
 
     const [emailError, setEmailError] = useState('');
@@ -66,6 +80,58 @@ export default function LoginScreen() {
             setIsLoading(false);
         }
     };
+
+    const handleGoogleLogin = async () => {
+        if (!googleWebClientId && !googleAndroidClientId && !googleIosClientId) {
+            setServerError('Thiếu cấu hình Google Client ID. Vui lòng cấu hình app trước khi dùng Google Login.');
+            return;
+        }
+
+        setServerError(null);
+        setIsGoogleLoading(true);
+        try {
+            await promptAsync();
+        } catch {
+            setServerError('Không thể mở đăng nhập Google. Vui lòng thử lại.');
+            setIsGoogleLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        const consumeGoogleToken = async () => {
+            if (!response) return;
+
+            if (response.type === 'success') {
+                const idToken = response.authentication?.idToken;
+                if (!idToken) {
+                    setServerError('Không lấy được ID Token từ Google.');
+                    setIsGoogleLoading(false);
+                    return;
+                }
+
+                try {
+                    const loginResponse = await loginWithGoogle({ idToken });
+                    if (loginResponse.Success) {
+                        router.replace('/(tabs)' as any);
+                    } else {
+                        setServerError(loginResponse.Message || 'Đăng nhập Google thất bại.');
+                    }
+                } catch (error) {
+                    const apiError = error as ApiError;
+                    setServerError(apiError.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+                } finally {
+                    setIsGoogleLoading(false);
+                }
+                return;
+            }
+
+            if (response.type === 'error' || response.type === 'dismiss' || response.type === 'cancel') {
+                setIsGoogleLoading(false);
+            }
+        };
+
+        consumeGoogleToken();
+    }, [response, loginWithGoogle, router]);
 
     return (
         <KeyboardAvoidingView
@@ -150,11 +216,23 @@ export default function LoginScreen() {
                 <TouchableOpacity
                     style={[styles.submitButton, isLoading && styles.buttonDisabled]}
                     onPress={handleLogin}
-                    disabled={isLoading}
+                    disabled={isLoading || isGoogleLoading}
                     activeOpacity={0.85}
                 >
                     <Text style={styles.submitText}>
                         {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Google Login */}
+                <TouchableOpacity
+                    style={[styles.googleButton, (isGoogleLoading || !request) && styles.buttonDisabled]}
+                    onPress={handleGoogleLogin}
+                    disabled={isGoogleLoading || !request || isLoading}
+                    activeOpacity={0.85}
+                >
+                    <Text style={styles.googleButtonText}>
+                        {isGoogleLoading ? 'Đang kết nối Google...' : 'Đăng nhập với Google'}
                     </Text>
                 </TouchableOpacity>
 
@@ -295,7 +373,21 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.sm,
         paddingVertical: 14,
         alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    googleButton: {
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        borderRadius: BorderRadius.sm,
+        paddingVertical: 14,
+        alignItems: 'center',
         marginBottom: Spacing.xl,
+        backgroundColor: '#FFF',
+    },
+    googleButtonText: {
+        color: AppColors.text,
+        fontSize: 14,
+        fontWeight: '700',
     },
     buttonDisabled: {
         opacity: 0.6,
