@@ -1030,6 +1030,11 @@ namespace ShopHangTet.Services
             _logger.LogInformation($"Creating B2C order for {dto.CustomerEmail}");
 
             var orderItems = await BuildOrderItemsFromB2CAsync(dto.Items);
+            if (!orderItems.Any())
+            {
+                throw new InvalidOperationException("Order has no valid items after mapping.");
+            }
+
             var totalQuantity = orderItems.Sum(x => x.Quantity);
             var shippingFee = ShouldApplyTestShippingOverride(orderItems)
                 ? 0
@@ -1091,7 +1096,11 @@ namespace ShopHangTet.Services
             _logger.LogInformation($"Creating B2B order for user {dto.UserId}");
 
             var orderItems = await BuildOrderItemsFromB2BAsync(dto.Items);
-                
+            if (!orderItems.Any())
+            {
+                throw new InvalidOperationException("Order has no valid items after mapping.");
+            }
+
             // B2B: KHÔNG gán DeliveryAddress vào Order
             var addressIds = dto.DeliveryAllocations.Select(x => x.AddressId).ToList();
             var addresses = await _context.Addresses
@@ -1444,6 +1453,10 @@ namespace ShopHangTet.Services
                         TotalPrice = customBox.TotalPrice * dto.Quantity,
                         SnapshotItems = await BuildCustomBoxSnapshotAsync(customBox)
                     });
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unsupported order item type: {dto.Type}");
                 }
             }
 
