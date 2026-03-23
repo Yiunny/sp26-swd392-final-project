@@ -27,16 +27,12 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/dashboard");
-            return StatusCode(500, new { message = "Lỗi khi tải dữ liệu dashboard.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai du lieu dashboard.", detail = ex.Message });
         }
     }
 
     [HttpGet("revenue")]
-    public async Task<IActionResult> Revenue(
-        [FromQuery] DateTime? fromDate,
-        [FromQuery] DateTime? toDate,
-        [FromQuery] string view = "day",
-        [FromQuery] string? orderType = null)
+    public async Task<IActionResult> Revenue([FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate, [FromQuery] string view = "day", [FromQuery] string? orderType = null)
     {
         try
         {
@@ -46,7 +42,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/revenue");
-            return StatusCode(500, new { message = "Lỗi khi tải báo cáo doanh thu.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai bao cao doanh thu.", detail = ex.Message });
         }
     }
 
@@ -61,7 +57,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/collections-performance");
-            return StatusCode(500, new { message = "Lỗi khi tải hiệu suất bộ sưu tập.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai hieu suat bo suu tap.", detail = ex.Message });
         }
     }
 
@@ -76,7 +72,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/giftbox-performance");
-            return StatusCode(500, new { message = "Lỗi khi tải hiệu suất gift box.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai hieu suat gift box.", detail = ex.Message });
         }
     }
 
@@ -91,7 +87,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/b2c-b2b-comparison");
-            return StatusCode(500, new { message = "Lỗi khi tải so sánh B2C/B2B.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai so sanh B2C/B2B.", detail = ex.Message });
         }
     }
 
@@ -106,7 +102,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/inventory-alert");
-            return StatusCode(500, new { message = "Lỗi khi tải cảnh báo tồn kho.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi tai canh bao ton kho.", detail = ex.Message });
         }
     }
 
@@ -125,7 +121,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/export/revenue");
-            return StatusCode(500, new { message = "Lỗi khi xuất báo cáo doanh thu.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi xuat bao cao doanh thu.", detail = ex.Message });
         }
     }
 
@@ -140,7 +136,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/export/collections");
-            return StatusCode(500, new { message = "Lỗi khi xuất báo cáo bộ sưu tập.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi xuat bao cao bo suu tap.", detail = ex.Message });
         }
     }
 
@@ -155,7 +151,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/export/giftboxes");
-            return StatusCode(500, new { message = "Lỗi khi xuất báo cáo gift box.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi xuat bao cao gift box.", detail = ex.Message });
         }
     }
 
@@ -170,7 +166,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/export/b2c-b2b");
-            return StatusCode(500, new { message = "Lỗi khi xuất báo cáo B2C/B2B.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi xuat bao cao B2C/B2B.", detail = ex.Message });
         }
     }
 
@@ -185,7 +181,7 @@ public class ReportsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in GET /api/admin/reports/export/inventory-alert");
-            return StatusCode(500, new { message = "Lỗi khi xuất cảnh báo tồn kho.", detail = ex.Message });
+            return StatusCode(500, new { message = "Loi khi xuat canh bao ton kho.", detail = ex.Message });
         }
     }
 }
