@@ -1465,6 +1465,12 @@ namespace ShopHangTet.DTOs
         public decimal Revenue { get; set; }
     }
 
+    public class BestDayDTO
+    {
+        public string Date { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+    }
+
     public class CollectionPerformanceItemDTO
     {
         public int Rank { get; set; }

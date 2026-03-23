@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     View,
     Text,
@@ -12,6 +13,8 @@ import {
     Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,6 +42,7 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null);
 
@@ -235,6 +239,7 @@ export default function LoginScreen() {
                     style={[styles.submitButton, isLoading && styles.buttonDisabled]}
                     onPress={handleLogin}
                     disabled={isLoading || isGoogleLoading}
+                    disabled={isLoading || isGoogleLoading}
                     activeOpacity={0.85}
                 >
                     <Text style={styles.submitText}>
@@ -415,7 +420,21 @@ const styles = StyleSheet.create({
         borderRadius: BorderRadius.sm,
         paddingVertical: 14,
         alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    googleButton: {
+        borderWidth: 1,
+        borderColor: AppColors.border,
+        borderRadius: BorderRadius.sm,
+        paddingVertical: 14,
+        alignItems: 'center',
         marginBottom: Spacing.xl,
+        backgroundColor: '#FFF',
+    },
+    googleButtonText: {
+        color: AppColors.text,
+        fontSize: 14,
+        fontWeight: '700',
         backgroundColor: '#FFF',
     },
     googleButtonText: {

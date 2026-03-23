@@ -57,6 +57,10 @@ namespace ShopHangTet.Services
         // === Admin Orders ===
         /// Lấy danh sách tất cả đơn hàng cho Admin (có phân trang, lọc)
         Task<AdminOrderListResult> GetAllOrdersAsync(string? status, string? orderType, string? keyword, int page, int pageSize);
+
+        // === Admin Orders ===
+        /// Lấy danh sách tất cả đơn hàng cho Admin (có phân trang, lọc)
+        Task<AdminOrderListResult> GetAllOrdersAsync(string? status, string? orderType, string? keyword, int page, int pageSize);
     }
 
     public class OrderValidationResult
@@ -74,6 +78,30 @@ namespace ShopHangTet.Services
         public decimal TotalAmount { get; set; }
         public List<OrderItemResponseDto> Items { get; set; } = new();
         public List<OrderStatusHistoryDto> StatusHistory { get; set; } = new();
+    }
+
+    public class AdminOrderListResult
+    {
+        public List<AdminOrderListItem> Data { get; set; } = new();
+        public int TotalItems { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalPages { get; set; }
+    }
+
+    public class AdminOrderListItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string OrderCode { get; set; } = string.Empty;
+        public string CustomerName { get; set; } = string.Empty;
+        public string CustomerEmail { get; set; } = string.Empty;
+        public string CustomerPhone { get; set; } = string.Empty;
+        public string OrderType { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public decimal TotalAmount { get; set; }
+        public int TotalItems { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? DeliveryDate { get; set; }
     }
 
     public class AdminOrderListResult

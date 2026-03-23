@@ -204,14 +204,22 @@ public class DashboardService : IDashboardService
         {
             if (order.Items == null || order.Items.Count == 0) continue;
 
+            if (order.Items == null || order.Items.Count == 0) continue;
+
             foreach (var item in order.Items)
             {
                 if (item.GiftBoxId == null) continue;
                 var gbId = item.GiftBoxId?.ToString();
                 if (string.IsNullOrWhiteSpace(gbId)) continue;
 
+                if (string.IsNullOrWhiteSpace(gbId)) continue;
+
                 var gb = giftBoxes.FirstOrDefault(g => g.Id == gbId);
                 if (gb == null) continue;
+
+                var cid = gb.CollectionId;
+                if (string.IsNullOrWhiteSpace(cid)) continue;
+
 
                 var cid = gb.CollectionId;
                 if (string.IsNullOrWhiteSpace(cid)) continue;
@@ -257,10 +265,14 @@ public class DashboardService : IDashboardService
         {
             if (order.Items == null || order.Items.Count == 0) continue;
 
+            if (order.Items == null || order.Items.Count == 0) continue;
+
             foreach (var item in order.Items)
             {
                 if (item.GiftBoxId == null) continue;
                 var gbId = item.GiftBoxId?.ToString();
+                if (string.IsNullOrWhiteSpace(gbId)) continue;
+
                 if (string.IsNullOrWhiteSpace(gbId)) continue;
 
                 if (!map.ContainsKey(gbId)) map[gbId] = (0, 0m);
@@ -294,6 +306,7 @@ public class DashboardService : IDashboardService
 
     public async Task<List<InventoryAlertDTO>> GetInventoryAlertAsync(int threshold = 10)
     {
+        var items = await SafeListAsync(_context.Items, nameof(_context.Items));
         var items = await SafeListAsync(_context.Items, nameof(_context.Items));
 
         var alerts = items
