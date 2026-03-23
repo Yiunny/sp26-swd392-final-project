@@ -180,8 +180,12 @@ public class MixMatchService : IMixMatchService
         var usedInCustom = await _context.CustomBoxes.AnyAsync(cb => cb.Items.Any(it => it.ItemId == id));
         if (usedInCustom) throw new InvalidOperationException("Cannot delete item because it is used in existing gift boxes or orders");
 
-        // Check Orders (snapshot items)
-        var usedInOrders = await _context.Orders.AnyAsync(o => o.Items.Any(oi => oi.SnapshotItems.Any(si => si.ItemId == id)));
+        // Check Orders (snapshot items). Mongo EF has translation issues for nested Any here,
+        // so evaluate in memory to avoid runtime query exceptions.
+        var orders = await _context.Orders.ToListAsync();
+        var usedInOrders = orders.Any(o =>
+            o.Items != null &&
+            o.Items.Any(oi => oi.SnapshotItems != null && oi.SnapshotItems.Any(si => si.ItemId == id)));
         if (usedInOrders) throw new InvalidOperationException("Cannot delete item because it is used in existing gift boxes or orders");
 
         var item = await _context.Items.FirstOrDefaultAsync(i => i.Id == id);
@@ -206,7 +210,7 @@ public class MixMatchService : IMixMatchService
 
     public async Task<MixMatchRuleDTO> GetRulesAsync()
     {
-        var cfg = await _context.SystemConfigs.FirstOrDefaultAsync(s => s.Id == "MIX_MATCH_RULE");
+        var cfg = await _context.SystemConfigs.FirstOrDefaultAsync();
         if (cfg == null || string.IsNullOrWhiteSpace(cfg.EmailTemplate))
         {
             return new MixMatchRuleDTO();
@@ -225,14 +229,12 @@ public class MixMatchService : IMixMatchService
 
     public async Task UpdateRulesAsync(MixMatchRuleDTO dto)
     {
-        var cfg = await _context.SystemConfigs.FirstOrDefaultAsync(s => s.Id == "MIX_MATCH_RULE");
+        var cfg = await _context.SystemConfigs.FirstOrDefaultAsync();
         var json = JsonSerializer.Serialize(dto);
         if (cfg == null)
         {
             cfg = new SystemConfig
             {
-                Id = "MIX_MATCH_RULE",
-                Id = "MIX_MATCH_RULE",
                 EmailTemplate = json,
                 UpdatedAt = DateTime.UtcNow
             };

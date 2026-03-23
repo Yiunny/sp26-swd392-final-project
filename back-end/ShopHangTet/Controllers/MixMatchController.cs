@@ -53,8 +53,15 @@ namespace ShopHangTet.Controllers
         [HttpPatch("items/{id}/status")]
         public async Task<IActionResult> ToggleStatus(string id, [FromBody] StatusDto body)
         {
-            await _service.ToggleItemStatusAsync(id, body.IsActive);
-            return NoContent();
+            try
+            {
+                await _service.ToggleItemStatusAsync(id, body.IsActive);
+                return NoContent();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { Message = ex.Message });
+            }
         }
 
         [HttpDelete("items/{id}")]

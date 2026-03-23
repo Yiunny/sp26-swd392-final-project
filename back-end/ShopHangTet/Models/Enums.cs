@@ -28,9 +28,10 @@ public enum OrderItemType
 public enum ItemCategory
 {
     DRINK,
-    FOOD, 
+    FOOD,
     NUT,
-    ALCOHOL
+    ALCOHOL,
+    SAVORY
 }
 
 public enum UserRole

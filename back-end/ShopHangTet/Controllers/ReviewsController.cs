@@ -33,15 +33,29 @@ public class ReviewsController : ControllerBase
     [HttpPatch("{id}/approve")]
     public async Task<IActionResult> Approve(string id)
     {
-        await _service.ApproveReviewAsync(id);
-        return NoContent();
+        try
+        {
+            await _service.ApproveReviewAsync(id);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
     }
 
     [HttpPatch("{id}/hide")]
     public async Task<IActionResult> Hide(string id)
     {
-        await _service.HideReviewAsync(id);
-        return NoContent();
+        try
+        {
+            await _service.HideReviewAsync(id);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
     }
 
     // ----------------- User-facing review APIs -----------------
