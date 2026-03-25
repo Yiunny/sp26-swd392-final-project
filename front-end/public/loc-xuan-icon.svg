@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#b91c1c" />
+      <stop offset="100%" stop-color="#7f1d1d" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <g id="petal">
+      <path d="M128 32 C164 32, 172 100, 128 128 C84 100, 92 32, 128 32 Z" fill="url(#goldGrad)" />
+      <line x1="128" y1="44" x2="128" y2="100" stroke="#78350f" stroke-width="2" opacity="0.3" stroke-linecap="round" />
+    </g>
+  </defs>
+  
+  <rect width="256" height="256" rx="64" fill="url(#bgGrad)" />
+  
+  <circle cx="128" cy="128" r="100" fill="none" stroke="url(#goldGrad)" stroke-width="2" opacity="0.8" />
+  <circle cx="128" cy="128" r="92" fill="none" stroke="url(#goldGrad)" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.6" />
+  
+  <g transform="translate(128, 128) scale(0.9) translate(-128, -128)">
+      <use href="#petal" />
+      <use href="#petal" transform="rotate(72 128 128)" />
+      <use href="#petal" transform="rotate(144 128 128)" />
+      <use href="#petal" transform="rotate(216 128 128)" />
+      <use href="#petal" transform="rotate(288 128 128)" />
+  </g>
+  
+  <circle cx="128" cy="128" r="22" fill="#fcd34d" />
+  <circle cx="128" cy="128" r="8" fill="#b45309" />
+  
+  <circle cx="128" cy="114" r="3" fill="#b45309" />
+  <circle cx="141" cy="123" r="3" fill="#b45309" />
+  <circle cx="136" cy="139" r="3" fill="#b45309" />
+  <circle cx="120" cy="139" r="3" fill="#b45309" />
+  <circle cx="115" cy="123" r="3" fill="#b45309" />
+</svg>
