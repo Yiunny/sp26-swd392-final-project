@@ -680,7 +680,8 @@ namespace ShopHangTet.Services
                         CreatedAt = o.CreatedAt,
                         DeliveryDate = o.DeliveryDate,
                         BankName = user?.BankName,
-                        BankAccountNumber = user?.BankAccountNumber
+                        BankAccountNumber = user?.BankAccountNumber,
+                        DeliveryAddress = o.DeliveryAddress?.AddressLine
                     };
                 }).ToList(),
                 TotalItems = totalItems,

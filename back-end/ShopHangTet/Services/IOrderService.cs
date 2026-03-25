@@ -100,6 +100,7 @@ namespace ShopHangTet.Services
         public DateTime? DeliveryDate { get; set; }
         public string? BankName { get; set; }
         public string? BankAccountNumber { get; set; }
+        public string? DeliveryAddress { get; set; }
     }
 
 }
