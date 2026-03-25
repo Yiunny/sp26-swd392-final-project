@@ -17,8 +17,9 @@ function formatDate(v?: string | null) {
 }
 
 export default function OrderDetailPage() {
-  const { id } = useParams();
+  const { id, code } = useParams<{ id?: string; code?: string }>();
   const navigate = useNavigate();
+  const identifier = code || id; // Use code if from /orders/code/:code, otherwise id from /orders/:id
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,14 +32,14 @@ export default function OrderDetailPage() {
     }
 
     const load = async () => {
-      if (!id) {
+      if (!identifier) {
         setError('Thiếu mã định danh đơn hàng.');
         setLoading(false);
         return;
       }
 
       try {
-        const data = await orderService.getOrderDetailById(id);
+        const data = await orderService.getOrderDetailById(identifier);
         setOrder(data);
       } catch (err: any) {
         setError(err?.message ?? 'Không thể tải chi tiết đơn hàng.');
@@ -48,7 +49,7 @@ export default function OrderDetailPage() {
     };
 
     load();
-  }, [id, navigate]);
+  }, [identifier, navigate]);
 
   return (
     <div className="font-sans bg-[#F5F5F5] min-h-screen flex flex-col">

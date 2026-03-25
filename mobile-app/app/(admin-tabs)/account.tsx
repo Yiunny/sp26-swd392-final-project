@@ -49,6 +49,7 @@ export default function AdminAccountScreen() {
                 <Text style={styles.cardTitle}>Tiện ích quản trị</Text>
                 <Item icon="grid-outline" label="Dashboard" onPress={() => router.push('/(admin-tabs)/dashboard' as any)} />
                 <Item icon="receipt-outline" label="Quản lý đơn hàng" onPress={() => router.push('/(admin-tabs)/orders' as any)} />
+                <Item icon="chatbubble-ellipses-outline" label="Duyệt bình luận" onPress={() => router.push('/(admin-tabs)/reviews' as any)} />
                 <Item icon="layers-outline" label="Kho & tồn" onPress={() => router.push('/(admin-tabs)/inventory' as any)} />
             </View>
 

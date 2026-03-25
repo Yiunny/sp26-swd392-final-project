@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '../contexts/AuthContext';
 import { AppColors } from '../constants/theme';
 import Toast, { BaseToast, ErrorToast, ToastConfig } from 'react-native-toast-message';
+import AIChatBox from '../components/AIChatBox';
 
 // Global Toast Config
 const toastConfig: ToastConfig = {
@@ -92,6 +93,7 @@ export default function RootLayout() {
             <Stack.Screen name="about" options={{ animation: 'slide_from_right' }} />
           </Stack>
         </View>
+        <AIChatBox />
       </AuthProvider>
       <Toast config={toastConfig} />
     </GestureHandlerRootView>

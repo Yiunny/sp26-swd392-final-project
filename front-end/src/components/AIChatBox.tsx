@@ -237,8 +237,8 @@ export default function AIChatBox() {
                 onMouseLeave={() => setIsHovered(false)}
                 style={btnStyle}
                 className={`fixed z-50 w-16 h-16 rounded-full flex items-center justify-center cursor-pointer group select-none overflow-visible ${isOpen
-                        ? "bg-gradient-to-br from-[#4a5568] to-[#2d3748] shadow-lg"
-                        : "bg-gradient-to-br from-[#8B1A1A] to-[#C0392B]"
+                    ? "bg-gradient-to-br from-[#4a5568] to-[#2d3748] shadow-lg"
+                    : "bg-gradient-to-br from-[#8B1A1A] to-[#C0392B]"
                     } ${isDragging ? "shadow-2xl !cursor-grabbing" : ""}`}
                 title="Trợ lý AI — kéo để di chuyển"
             >
@@ -454,8 +454,8 @@ export default function AIChatBox() {
                                 )}
                                 <div
                                     className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${msg.role === "user"
-                                            ? "bg-[#8B1A1A] text-white rounded-br-md"
-                                            : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100"
+                                        ? "bg-[#8B1A1A] text-white rounded-br-md"
+                                        : "bg-white text-gray-800 rounded-bl-md shadow-sm border border-gray-100"
                                         }`}
                                 >
                                     {msg.content}
@@ -475,7 +475,7 @@ export default function AIChatBox() {
                                     <div className="w-5 h-5 bg-[#8B1A1A] rounded-full flex items-center justify-center">
                                         <FiMessageSquare className="w-3 h-3 text-white" />
                                     </div>
-                                    <span className="text-[10px] text-gray-400 font-medium">Đang trả lời...</span>
+                                    <span className="text-[10px] text-gray-400 font-medium">Bối rối, đợi em xíu...</span>
                                 </div>
                                 <div className="bg-white px-4 py-3 rounded-2xl rounded-bl-md shadow-sm border border-gray-100 flex items-center gap-1">
                                     <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />

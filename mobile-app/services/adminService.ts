@@ -8,6 +8,29 @@ export interface AdminDashboardSummary {
     [key: string]: any;
 }
 
+export interface ReviewListItem {
+    Id: string;
+    ReviewerName: string;
+    ReviewerEmail: string;
+    ReviewerAvatar?: string;
+    GiftBoxId: string;
+    GiftBoxName: string;
+    GiftBoxImage?: string;
+    Rating: number;
+    Content: string;
+    CreatedAt: string;
+    Status: string;
+    StatusLabel?: string;
+}
+
+export interface ReviewListResponse {
+    Items: ReviewListItem[];
+    Page: number;
+    PageSize: number;
+    TotalItems: number;
+    TotalPages: number;
+}
+
 export const adminService = {
     getDashboardSummary: async (): Promise<AdminDashboardSummary> => {
         const response = await apiClient.get('/admin/dashboard/summary');
@@ -132,6 +155,20 @@ export const adminService = {
     },
     createInventoryItem: async (data: any): Promise<any> => {
         const response = await apiClient.post('/admin/inventory', data);
+        return response.data;
+    },
+
+    // ════════ REVIEWS ════════
+    getReviews: async (params?: { status?: string; rating?: number; giftBoxId?: string; page?: number; pageSize?: number }): Promise<ReviewListResponse | any> => {
+        const response = await apiClient.get('/admin/reviews', { params });
+        return response.data;
+    },
+    approveReview: async (id: string): Promise<any> => {
+        const response = await apiClient.patch(`/admin/reviews/${id}/approve`);
+        return response.data;
+    },
+    hideReview: async (id: string): Promise<any> => {
+        const response = await apiClient.patch(`/admin/reviews/${id}/hide`);
         return response.data;
     },
 };

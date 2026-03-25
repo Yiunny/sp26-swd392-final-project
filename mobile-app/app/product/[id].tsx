@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { productService, type GiftBoxDetailDto } from '../../services/productService';
+import { reviewService, type GiftBoxReviewItem, type GiftBoxReviewsResponse } from '../../services/reviewService';
 import { cartService, cartEvents } from '../../services/cartService';
 import { AppColors, Spacing, BorderRadius } from '../../constants/theme';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -15,6 +16,17 @@ const { width } = Dimensions.get('window');
 
 function formatPrice(v: number) {
     return v.toLocaleString('vi-VN') + '₫';
+}
+
+function formatReviewDate(dateStr: string) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays < 1) return 'Hôm nay';
+    if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 30) return `${diffDays} ngày trước`;
+    return d.toLocaleDateString('vi-VN');
 }
 
 export default function ProductDetailScreen() {
@@ -31,6 +43,10 @@ export default function ProductDetailScreen() {
     const [cartMsg, setCartMsg] = useState<string | null>(null);
     const [cartMsgSuccess, setCartMsgSuccess] = useState(false);
 
+    // Reviews
+    const [reviewsData, setReviewsData] = useState<GiftBoxReviewsResponse | null>(null);
+    const [reviewsLoading, setReviewsLoading] = useState(false);
+
     const scrollRef = useRef<FlatList>(null);
 
     useEffect(() => {
@@ -41,6 +57,13 @@ export default function ProductDetailScreen() {
             .then((data) => { setProduct(data); setSelectedImage(0); })
             .catch(() => setError('Không tìm thấy sản phẩm.'))
             .finally(() => setLoading(false));
+
+        // Fetch reviews
+        setReviewsLoading(true);
+        reviewService.getGiftBoxReviews(id)
+            .then(setReviewsData)
+            .catch(() => { /* ignore */ })
+            .finally(() => setReviewsLoading(false));
     }, [id, type]);
 
     useEffect(() => {
@@ -249,7 +272,10 @@ export default function ProductDetailScreen() {
                 <View style={styles.detailCards}>
                     {/* Info card */}
                     <View style={styles.detailCard}>
-                        <Text style={styles.detailCardTitle}>ℹ️ Thông tin sản phẩm</Text>
+                        <View style={styles.detailCardTitleRow}>
+                            <Ionicons name="information-circle-outline" size={18} color={AppColors.primary} />
+                            <Text style={styles.detailCardTitle}>Thông tin sản phẩm</Text>
+                        </View>
                         <InfoRow label="Tên sản phẩm" value={product.Name} />
                         <InfoRow label="Giá niêm yết" value={formatPrice(product.Price)} />
                         {product.Collection && <InfoRow label="Bộ sưu tập" value={product.Collection} />}
@@ -261,7 +287,10 @@ export default function ProductDetailScreen() {
                     {/* Items card */}
                     {product.Items.length > 0 && (
                         <View style={styles.detailCard}>
-                            <Text style={styles.detailCardTitle}>🎁 Thành phần giỏ quà</Text>
+                        <View style={styles.detailCardTitleRow}>
+                            <Ionicons name="gift-outline" size={18} color={AppColors.primary} />
+                            <Text style={styles.detailCardTitle}>Thành phần giỏ quà</Text>
+                        </View>
                             {product.Items.map((item, idx) => (
                                 <View key={idx} style={styles.giftItem}>
                                     <View style={styles.giftItemImage}>
@@ -279,6 +308,72 @@ export default function ProductDetailScreen() {
                             ))}
                         </View>
                     )}
+
+                    {/* Reviews section */}
+                    <View style={styles.detailCard}>
+                        <View style={styles.detailCardTitleRow}>
+                            <Ionicons name="star" size={18} color={AppColors.primary} />
+                            <Text style={styles.detailCardTitle}>Đánh giá sản phẩm</Text>
+                        </View>
+
+                        {reviewsLoading ? (
+                            <View style={{ padding: 20, alignItems: 'center' }}>
+                                <LoadingSpinner />
+                            </View>
+                        ) : reviewsData && reviewsData.TotalReviews > 0 ? (
+                            <>
+                                {/* Summary */}
+                                <View style={styles.reviewSummary}>
+                                    <Text style={styles.reviewAvg}>{reviewsData.AverageRating.toFixed(1)}</Text>
+                                    <View style={{ marginLeft: 8 }}>
+                                        <View style={styles.starsRow}>
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <Ionicons
+                                                    key={s}
+                                                    name={s <= Math.round(reviewsData.AverageRating) ? 'star' : 'star-outline'}
+                                                    size={18}
+                                                    color="#F59E0B"
+                                                />
+                                            ))}
+                                        </View>
+                                        <Text style={styles.reviewCount}>{reviewsData.TotalReviews} đánh giá</Text>
+                                    </View>
+                                </View>
+
+                                {/* Review list */}
+                                {reviewsData.Reviews.map((review) => (
+                                    <View key={review.ReviewId} style={styles.reviewItem}>
+                                        <View style={styles.reviewHeader}>
+                                            <View style={styles.reviewUser}>
+                                                <Ionicons name="person-circle-outline" size={28} color={AppColors.textMuted} />
+                                                <Text style={styles.reviewUserName}>{review.UserName}</Text>
+                                            </View>
+                                            <Text style={styles.reviewDate}>{formatReviewDate(review.CreatedAt)}</Text>
+                                        </View>
+                                        <View style={styles.starsRow}>
+                                            {[1, 2, 3, 4, 5].map(s => (
+                                                <Ionicons
+                                                    key={s}
+                                                    name={s <= review.Rating ? 'star' : 'star-outline'}
+                                                    size={14}
+                                                    color="#F59E0B"
+                                                />
+                                            ))}
+                                        </View>
+                                        {review.Content ? (
+                                            <Text style={styles.reviewContent}>{review.Content}</Text>
+                                        ) : null}
+                                    </View>
+                                ))}
+                            </>
+                        ) : (
+                            <View style={styles.noReviews}>
+                                <Ionicons name="chatbubble-outline" size={32} color={AppColors.border} />
+                                <Text style={styles.noReviewsText}>Chưa có đánh giá nào</Text>
+                                <Text style={styles.noReviewsDesc}>Hãy là người đầu tiên đánh giá sản phẩm này!</Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
             </ScrollView>
 
@@ -420,6 +515,9 @@ const styles = StyleSheet.create({
         fontSize: 15, fontWeight: '700', fontStyle: 'italic', color: AppColors.primary,
         fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', marginBottom: 12,
     },
+    detailCardTitleRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12,
+    },
     infoRow: {
         flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6,
         borderBottomWidth: 1, borderBottomColor: AppColors.borderLight,
@@ -438,6 +536,28 @@ const styles = StyleSheet.create({
     },
     giftItemName: { fontSize: 13, fontWeight: '600', color: AppColors.text },
     giftItemDetail: { fontSize: 11, color: AppColors.textMuted, marginTop: 2 },
+
+    /* Reviews */
+    reviewSummary: {
+        flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
+        borderBottomWidth: 1, borderBottomColor: AppColors.borderLight, marginBottom: 12,
+    },
+    reviewAvg: { fontSize: 36, fontWeight: '800', color: AppColors.text },
+    starsRow: { flexDirection: 'row', gap: 2 },
+    reviewCount: { fontSize: 12, color: AppColors.textMuted, marginTop: 2 },
+    reviewItem: {
+        paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: AppColors.borderLight,
+    },
+    reviewHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6,
+    },
+    reviewUser: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    reviewUserName: { fontSize: 13, fontWeight: '600', color: AppColors.text },
+    reviewDate: { fontSize: 11, color: AppColors.textMuted },
+    reviewContent: { fontSize: 13, color: AppColors.textSecondary, lineHeight: 20, marginTop: 6 },
+    noReviews: { alignItems: 'center', paddingVertical: 24 },
+    noReviewsText: { fontSize: 14, fontWeight: '600', color: AppColors.text, marginTop: 8 },
+    noReviewsDesc: { fontSize: 12, color: AppColors.textMuted, marginTop: 4 },
 
     stickyFooter: {
         position: 'absolute', bottom: 0, left: 0, right: 0,

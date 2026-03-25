@@ -160,7 +160,7 @@ export default function OrderSuccessPage() {
                             )}
 
                             <Link
-                                to={`/order-detail?code=${orderCode}`}
+                                to={`/orders/code/${orderCode}`}
                                 className="text-xs font-bold text-[#8B1A1A] uppercase tracking-wider hover:underline flex items-center gap-1"
                             >
                                 Xem chi tiết đơn hàng

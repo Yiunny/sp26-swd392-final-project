@@ -11,7 +11,9 @@ import {
     Modal,
     TextInput,
     ScrollView,
+    Linking,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { AppColors, BorderRadius, Spacing } from '../../constants/theme';
 import { adminService } from '../../services/adminService';
 import { useAuth } from '../../contexts/AuthContext';
@@ -214,6 +216,25 @@ export default function AdminOrdersScreen() {
                             </View>
                             <Text style={styles.orderText}>Khách: {String(customer)}</Text>
                             <Text style={styles.orderTotal}>{Number(total).toLocaleString('vi-VN')}đ</Text>
+
+                            {/* Google Maps button for shipping orders */}
+                            {['SHIPPING', 'DELIVERY_FAILED', 'PARTIAL_DELIVERY'].includes(status) && (() => {
+                                const addr = String(item?.deliveryAddress ?? item?.DeliveryAddress ?? '');
+                                if (!addr) return null;
+                                return (
+                                    <TouchableOpacity
+                                        style={styles.mapBtn}
+                                        onPress={(e) => {
+                                            e.stopPropagation();
+                                            const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
+                                            Linking.openURL(url);
+                                        }}
+                                    >
+                                        <Ionicons name="navigate-outline" size={16} color="#1D4ED8" />
+                                        <Text style={styles.mapBtnText}>Chỉ đường giao hàng</Text>
+                                    </TouchableOpacity>
+                                );
+                            })()}
                         </TouchableOpacity>
                     );
                 }}
@@ -234,7 +255,7 @@ export default function AdminOrdersScreen() {
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>Cập nhật trạng thái</Text>
                                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.modalClose}>✕</Text>
+                                    <Ionicons name="close" size={22} color={AppColors.textMuted} />
                                 </TouchableOpacity>
                             </View>
 
@@ -630,5 +651,20 @@ const styles = StyleSheet.create({
         color: '#B91C1C',
         textAlign: 'center',
         marginTop: 4,
+    },
+    mapBtn: {
+        marginTop: 8,
+        backgroundColor: '#EEF7FF',
+        borderWidth: 1,
+        borderColor: '#93C5FD',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        alignItems: 'center',
+    },
+    mapBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#1D4ED8',
     },
 });

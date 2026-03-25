@@ -7,7 +7,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import loginBg from "../assets/login-bg.png";
 import { authService } from "../services/authService";
 import type { ApiError } from "../types/auth";
-import { FiChevronLeft, FiEye, FiEyeOff, FiLoader, FiLock } from "react-icons/fi";
+import { FiChevronLeft, FiEye, FiEyeOff, FiLoader } from "react-icons/fi";
 import { isValidEmailOrPhone } from "../utils/validation";
 
 const REDIRECT_DEFAULT = "/";
