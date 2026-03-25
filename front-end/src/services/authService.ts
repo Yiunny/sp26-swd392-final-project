@@ -202,9 +202,9 @@ export const authService = {
 
     /**
      * PUT /api/Auth/profile
-     * Updates user's name and phone number.
+     * Updates user's name, phone number, and bank details.
      */
-    updateProfile: async (data: { fullName: string; phone: string | null }) => {
+    updateProfile: async (data: { fullName: string; phone: string | null; bankName?: string; bankAccountNumber?: string }) => {
         const response = await apiClient.put<ApiResponse>(
             `${AUTH_ENDPOINT}/profile`,
             data,
