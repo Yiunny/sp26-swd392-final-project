@@ -128,6 +128,14 @@ namespace ShopHangTet.DTOs
         public DateTime CreatedAt { get; set; }
     }
 
+    public class CustomerListResponseDto
+    {
+        public List<UserResponseDto> Users { get; set; } = new();
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+        public int TotalItems { get; set; }
+    }
+
     public class OtpVerifyDto
     {
         [Required]
