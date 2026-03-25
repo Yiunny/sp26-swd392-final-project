@@ -13,7 +13,8 @@ const REDIRECT_DEFAULT = "/";
 
 const loginSchema = Yup.object({
     email: Yup.string()
-        .required("Vui lòng nhập email hoặc số điện thoại"),
+        .required("Vui lòng nhập email hoặc số điện thoại")
+        .test("email-or-phone", "Email hoặc số điện thoại không hợp lệ", (value) => isValidEmailOrPhone(value || "")),
     password: Yup.string()
         .required("Vui lòng nhập mật khẩu")
         .min(6, "Mật khẩu phải có ít nhất 6 ký tự"),

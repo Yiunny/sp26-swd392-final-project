@@ -623,21 +623,65 @@ namespace ShopHangTet.Services
             // For admin list, we show TotalItems based on the order's total amount
             // since exact item-to-order linking requires more complex logic.
 
+            var userIds = pageItems
+                .Where(o => o.UserId != null)
+                .Select(o => o.UserId.ToString()!)
+                .Distinct()
+                .ToList();
+
+            var emails = pageItems
+                .Where(o => !string.IsNullOrWhiteSpace(o.CustomerEmail))
+                .Select(o => o.CustomerEmail.Trim())
+                .Distinct()
+                .ToList();
+
+            var userMap = new Dictionary<string, UserModel>();
+            var emailUserMap = new Dictionary<string, UserModel>(StringComparer.OrdinalIgnoreCase);
+
+            if (userIds.Any() || emails.Any())
+            {
+                var lowerEmails = emails.Select(e => e.ToLower()).ToList();
+                var users = await _context.Users.Where(u => userIds.Contains(u.Id) || lowerEmails.Contains(u.Email)).ToListAsync();
+                foreach (var u in users)
+                {
+                    userMap[u.Id] = u;
+                    if (!string.IsNullOrWhiteSpace(u.Email))
+                    {
+                        emailUserMap[u.Email.Trim()] = u;
+                    }
+                }
+            }
+
             return new AdminOrderListResult
             {
-                Data = pageItems.Select(o => new AdminOrderListItem
+                Data = pageItems.Select(o => 
                 {
-                    Id = o.Id.ToString(),
-                    OrderCode = o.OrderCode ?? string.Empty,
-                    CustomerName = o.CustomerName ?? string.Empty,
-                    CustomerEmail = o.CustomerEmail ?? string.Empty,
-                    CustomerPhone = o.CustomerPhone ?? string.Empty,
-                    OrderType = o.OrderType.ToString(),
-                    Status = o.Status.ToString(),
-                    TotalAmount = o.TotalAmount,
-                    TotalItems = o.Items?.Count > 0 ? o.Items.Sum(i => i.Quantity) : 1,
-                    CreatedAt = o.CreatedAt,
-                    DeliveryDate = o.DeliveryDate,
+                    UserModel? user = null;
+                    if (o.UserId != null && userMap.TryGetValue(o.UserId.ToString()!, out var u1))
+                    {
+                        user = u1;
+                    }
+                    
+                    if (user == null && !string.IsNullOrWhiteSpace(o.CustomerEmail))
+                    {
+                        emailUserMap.TryGetValue(o.CustomerEmail.Trim(), out user);
+                    }
+                    return new AdminOrderListItem
+                    {
+                        Id = o.Id.ToString(),
+                        OrderCode = o.OrderCode ?? string.Empty,
+                        CustomerName = o.CustomerName ?? string.Empty,
+                        CustomerEmail = o.CustomerEmail ?? string.Empty,
+                        CustomerPhone = o.CustomerPhone ?? string.Empty,
+                        OrderType = o.OrderType.ToString(),
+                        Status = o.Status.ToString(),
+                        TotalAmount = o.TotalAmount,
+                        TotalItems = o.Items?.Count > 0 ? o.Items.Sum(i => i.Quantity) : 1,
+                        CreatedAt = o.CreatedAt,
+                        DeliveryDate = o.DeliveryDate,
+                        BankName = user?.BankName,
+                        BankAccountNumber = user?.BankAccountNumber
+                    };
                 }).ToList(),
                 TotalItems = totalItems,
                 Page = page,
@@ -657,13 +701,21 @@ namespace ShopHangTet.Services
                 throw new InvalidOperationException("Order not found");
             }
 
+            if (status == Models.OrderStatus.CANCELLED && order.PaymentDate.HasValue)
+            {
+                status = Models.OrderStatus.REFUNDING;
+                notes = string.IsNullOrWhiteSpace(notes) 
+                    ? "[Chuyển tự động sang REFUNDING do đơn đã thanh toán]" 
+                    : notes + " [Chuyển tự động sang REFUNDING do đơn đã thanh toán]";
+            }
+
             if (!IsValidStatusTransition(order.Status, status))
             {
                 throw new InvalidOperationException("Invalid order status transition");
             }
 
             // Cancel flow: stock đã bị trừ ngay khi tạo đơn, nên hủy là hoàn kho.
-            if (status == Models.OrderStatus.CANCELLED)
+            if (status == Models.OrderStatus.CANCELLED || status == Models.OrderStatus.REFUNDING)
             {
                 await RestockOrderInventoryAsync(order, updatedBy);
             }
@@ -956,6 +1008,18 @@ namespace ShopHangTet.Services
         {
             var enrichedItems = await BuildOrderItemResponsesAsync(order.Items ?? new List<OrderItem>());
 
+            UserModel? user = null;
+            if (order.UserId != null)
+            {
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Id == order.UserId.ToString());
+            }
+            
+            if (user == null && !string.IsNullOrWhiteSpace(order.CustomerEmail))
+            {
+                var lowerEmail = order.CustomerEmail.Trim().ToLower();
+                user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == lowerEmail);
+            }
+
             var result = new OrderDto
             {
                 Id = order.Id.ToString(),
@@ -969,6 +1033,8 @@ namespace ShopHangTet.Services
                 GreetingMessage = order.GreetingMessage,
                 GreetingCardUrl = order.GreetingCardUrl,
                 CreatedAt = order.CreatedAt,
+                CustomerBankName = user?.BankName,
+                CustomerBankAccount = user?.BankAccountNumber,
                 Items = enrichedItems
             };
 
@@ -1250,7 +1316,13 @@ namespace ShopHangTet.Services
                    || (currentStatus == OrderStatus.DELIVERY_FAILED && nextStatus == OrderStatus.CANCELLED)
                    || (currentStatus == OrderStatus.PARTIAL_DELIVERY && nextStatus == OrderStatus.SHIPPING) // reship remaining
                    || (currentStatus == OrderStatus.PARTIAL_DELIVERY && nextStatus == OrderStatus.COMPLETED)
-                   || (currentStatus == OrderStatus.PARTIAL_DELIVERY && nextStatus == OrderStatus.CANCELLED);
+                   || (currentStatus == OrderStatus.PARTIAL_DELIVERY && nextStatus == OrderStatus.CANCELLED)
+                   // Refund transitions
+                   || (currentStatus == OrderStatus.PREPARING && nextStatus == OrderStatus.REFUNDING)
+                   || (currentStatus == OrderStatus.SHIPPING && nextStatus == OrderStatus.REFUNDING)
+                   || (currentStatus == OrderStatus.PARTIAL_DELIVERY && nextStatus == OrderStatus.REFUNDING)
+                   || (currentStatus == OrderStatus.DELIVERY_FAILED && nextStatus == OrderStatus.REFUNDING)
+                   || (currentStatus == OrderStatus.REFUNDING && nextStatus == OrderStatus.REFUNDED);
         }
 
         private async Task<List<OrderItemSnapshotItem>> BuildGiftBoxSnapshotItemsAsync(GiftBox giftBox)

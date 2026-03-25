@@ -33,6 +33,8 @@ export interface OrderStatusSummary {
     PartiallyDelivered: number;
     Completed: number;
     Cancelled: number;
+    Refunding: number;
+    Refunded: number;
 }
 
 export interface OrderTypeSummary {
@@ -410,6 +412,8 @@ export interface AdminOrderListItem {
     TotalItems: number;
     CreatedAt: string;
     DeliveryDate?: string;
+    BankName?: string;
+    BankAccountNumber?: string;
 }
 
 /* ═══════════════════════════════════════════════════════════

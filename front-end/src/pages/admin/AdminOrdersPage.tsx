@@ -8,6 +8,8 @@ const STATUS_CONFIG: { key: keyof OrderStatusSummary; label: string; color: stri
     { key: "Shipping", label: "Đang giao", color: "text-indigo-700", bgColor: "bg-indigo-500" },
     { key: "DeliveryFailed", label: "Giao thất bại", color: "text-red-700", bgColor: "bg-red-500" },
     { key: "PartiallyDelivered", label: "Giao một phần", color: "text-orange-700", bgColor: "bg-orange-500" },
+    { key: "Refunding", label: "Đang hoàn tiền", color: "text-rose-700", bgColor: "bg-rose-500" },
+    { key: "Refunded", label: "Đã hoàn tiền", color: "text-purple-700", bgColor: "bg-purple-500" },
     { key: "Completed", label: "Hoàn tất", color: "text-emerald-700", bgColor: "bg-emerald-500" },
     { key: "Cancelled", label: "Đã hủy", color: "text-gray-700", bgColor: "bg-gray-500" },
 ];
@@ -19,16 +21,40 @@ const ALL_STATUSES = [
     { value: "SHIPPING", label: "Đang giao" },
     { value: "COMPLETED", label: "Hoàn tất" },
     { value: "CANCELLED", label: "Đã hủy" },
+    { value: "REFUNDING", label: "Đang hoàn tiền" },
+    { value: "REFUNDED", label: "Đã hoàn tiền" },
     { value: "DELIVERY_FAILED", label: "Giao thất bại" },
     { value: "PARTIAL_DELIVERY", label: "Giao một phần" },
 ];
 
-const STATUS_UPDATE_OPTIONS = [
-    { value: "PREPARING", label: "Đang chuẩn bị" },
-    { value: "SHIPPING", label: "Đang giao" },
-    { value: "COMPLETED", label: "Hoàn tất" },
-    { value: "CANCELLED", label: "Đã hủy" },
-];
+const VALID_TRANSITIONS: Record<string, { value: string; label: string }[]> = {
+    PAYMENT_CONFIRMING: [
+        { value: "PREPARING", label: "Đang chuẩn bị" },
+        { value: "CANCELLED", label: "Đã hủy" },
+    ],
+    PREPARING: [
+        { value: "SHIPPING", label: "Đang giao" },
+        { value: "CANCELLED", label: "Đã hủy" },
+    ],
+    SHIPPING: [
+        { value: "COMPLETED", label: "Hoàn tất" },
+        { value: "PARTIAL_DELIVERY", label: "Giao một phần" },
+        { value: "DELIVERY_FAILED", label: "Giao thất bại" },
+        { value: "CANCELLED", label: "Đã hủy" },
+    ],
+    DELIVERY_FAILED: [
+        { value: "SHIPPING", label: "Giao lại" },
+        { value: "CANCELLED", label: "Đã hủy" },
+    ],
+    PARTIAL_DELIVERY: [
+        { value: "SHIPPING", label: "Giao lại phần còn lại" },
+        { value: "COMPLETED", label: "Hoàn tất" },
+        { value: "CANCELLED", label: "Đã hủy" },
+    ],
+    REFUNDING: [
+        { value: "REFUNDED", label: "Đã hoàn tiền" },
+    ],
+};
 
 const STATUS_BADGE: Record<string, { text: string; cls: string }> = {
     PAYMENT_CONFIRMING: { text: "Chờ thanh toán", cls: "bg-amber-100 text-amber-700" },
@@ -39,11 +65,21 @@ const STATUS_BADGE: Record<string, { text: string; cls: string }> = {
     COMPLETED: { text: "Hoàn tất", cls: "bg-emerald-100 text-emerald-700" },
     CANCELLED: { text: "Đã hủy", cls: "bg-gray-100 text-gray-600" },
     PAYMENT_EXPIRED_INTERNAL: { text: "Hết hạn TT", cls: "bg-gray-100 text-gray-500" },
+    REFUNDING: { text: "Đang hoàn tiền", cls: "bg-red-100 text-red-700" },
+    REFUNDED: { text: "Đã hoàn tiền", cls: "bg-purple-100 text-purple-700" },
 };
 
 function formatPrice(v: number) { return v.toLocaleString("vi-VN") + "₫"; }
 function formatDate(d: string) { return new Date(d).toLocaleString("vi-VN"); }
 function getStatusInfo(s: string) { return STATUS_BADGE[s] ?? { text: s, cls: "bg-gray-100 text-gray-600" }; }
+
+function getErrorMessage(err: unknown): string {
+    if (typeof err === "object" && err !== null) {
+        const maybeErr = err as { response?: { data?: { message?: string } }; message?: string };
+        return maybeErr.response?.data?.message || maybeErr.message || "Cập nhật thất bại.";
+    }
+    return "Cập nhật thất bại.";
+}
 
 export default function AdminOrdersPage() {
     const [statusSummary, setStatusSummary] = useState<OrderStatusSummary | null>(null);
@@ -107,8 +143,9 @@ export default function AdminOrdersPage() {
 
 
     const openUpdateForOrder = (order: AdminOrderListItem) => {
+        const options = VALID_TRANSITIONS[order.Status] ?? [];
         setSelectedOrder(order);
-        setNewStatus("PREPARING");
+        setNewStatus(options.length > 0 ? options[0].value : "");
         setStatusNote("");
         setUpdateResult(null);
         setShowUpdate(true);
@@ -124,8 +161,8 @@ export default function AdminOrdersPage() {
             setUpdateResult({ success: true, message: "Đã cập nhật thành công!" });
             fetchOrders();
             fetchSummary();
-        } catch (err: any) {
-            setUpdateResult({ success: false, message: err?.response?.data?.message || err?.message || "Cập nhật thất bại." });
+        } catch (err: unknown) {
+            setUpdateResult({ success: false, message: getErrorMessage(err) });
         } finally { setUpdating(false); }
     };
 
@@ -164,7 +201,7 @@ export default function AdminOrdersPage() {
             {summaryLoading ? (
                 <div className="text-center py-4 text-gray-400 text-sm">Đang tải tổng quan...</div>
             ) : statusSummary && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-9 gap-3">
                     {STATUS_CONFIG.map(({ key, label, color, bgColor }) => {
                         const count = statusSummary[key] ?? 0;
                         return (
@@ -287,12 +324,45 @@ export default function AdminOrdersPage() {
                             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${getStatusInfo(selectedOrder.Status).cls}`}>{getStatusInfo(selectedOrder.Status).text}</span>
                         </div>
 
+                        {selectedOrder.Status === "REFUNDING" && (
+                            <div className="mb-6 p-4 border border-red-200 rounded-lg bg-red-50 flex flex-col items-center">
+                                <p className="text-sm font-bold text-red-800 mb-2">Quét mã QR để hoàn tiền</p>
+                                {selectedOrder.BankName && selectedOrder.BankAccountNumber ? (
+                                    <>
+                                        <p className="text-xs text-red-700 mb-3 text-center">
+                                            Ngân hàng: <strong>{selectedOrder.BankName}</strong><br/>
+                                            STK: <strong>{selectedOrder.BankAccountNumber}</strong><br/>
+                                            Số tiền: <strong>{formatPrice(selectedOrder.TotalAmount)}</strong>
+                                        </p>
+                                        <div className="p-2 bg-white rounded-lg shadow-sm">
+                                            <img
+                                                src={`https://qr.sepay.vn/img?acc=${selectedOrder.BankAccountNumber}&bank=${selectedOrder.BankName}&amount=${selectedOrder.TotalAmount}&des=Hoan tien don hang ${selectedOrder.OrderCode}`}
+                                                alt="QR Code Hoàn Tiền"
+                                                className="w-48 h-48 object-contain"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-red-600 mt-2 text-center">Scan mã bằng App Ngân Hàng / ZaloPay / MoMo</p>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-red-700 text-center">
+                                        Khách hàng chưa cung cấp thông tin tài khoản ngân hàng trong hồ sơ cá nhân. Vui lòng liên hệ trực tiếp để hoàn tiền.
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Trạng thái mới</label>
-                                <select value={newStatus} onChange={e => setNewStatus(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/20">
-                                    {STATUS_UPDATE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                                </select>
+                                {(() => {
+                                    const options = VALID_TRANSITIONS[selectedOrder.Status] ?? [];
+                                    if (options.length === 0) return <p className="text-sm text-gray-400">Không có thao tác chuyển trạng thái khả dụng.</p>;
+                                    return (
+                                        <select value={newStatus} onChange={e => setNewStatus(e.target.value)} className="w-full px-3 py-2 border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#8B1A1A]/20">
+                                            {options.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                                        </select>
+                                    );
+                                })()}
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Ghi chú (Tùy chọn)</label>
