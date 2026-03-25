@@ -5,6 +5,20 @@ import Footer from "../components/Footer";
 import { authService } from "../services/authService";
 import apiClient from "../services/apiClient";
 import { FiLoader, FiSearch } from "react-icons/fi";
+import {
+    MdOutlineAccessTime,
+    MdOutlineInventory2,
+    MdLocalShipping,
+    MdCheckCircle,
+    MdCancel,
+    MdWarningAmber,
+    MdPerson,
+    MdPhone,
+    MdLocationOn,
+    MdCalendarToday,
+    MdEmail,
+} from "react-icons/md";
+import { HiOutlineClipboardDocumentList } from "react-icons/hi2";
 import { isValidEmail, isValidOrderCode } from "../utils/validation";
 
 /* ═══════════════════ HELPERS ═══════════════════ */
@@ -19,16 +33,24 @@ function formatDate(dateStr: string) {
     });
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-    PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-yellow-600 bg-yellow-50 border-yellow-200", icon: "⏳" },
-    PREPARING: { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200", icon: "📦" },
-    SHIPPING: { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🚚" },
-    COMPLETED: { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: "✅" },
-    CANCELLED: { label: "Đã huỷ", color: "text-red-600 bg-red-50 border-red-200", icon: "❌" },
-    DELIVERY_FAILED: { label: "Giao thất bại", color: "text-orange-600 bg-orange-50 border-orange-200", icon: "⚠️" },
+const STATUS_LABELS: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+    PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-yellow-600 bg-yellow-50 border-yellow-200", icon: <MdOutlineAccessTime className="w-7 h-7" /> },
+    PAYMENT_CONFIRMING: { label: "Chờ thanh toán", color: "text-yellow-600 bg-yellow-50 border-yellow-200", icon: <MdOutlineAccessTime className="w-7 h-7" /> },
+    PREPARING: { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200", icon: <MdOutlineInventory2 className="w-7 h-7" /> },
+    SHIPPING: { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: <MdLocalShipping className="w-7 h-7" /> },
+    COMPLETED: { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: <MdCheckCircle className="w-7 h-7" /> },
+    CANCELLED: { label: "Đã huỷ", color: "text-red-600 bg-red-50 border-red-200", icon: <MdCancel className="w-7 h-7" /> },
+    DELIVERY_FAILED: { label: "Giao thất bại", color: "text-orange-600 bg-orange-50 border-orange-200", icon: <MdWarningAmber className="w-7 h-7" /> },
 };
 
 const STATUS_STEPS = ["PENDING_PAYMENT", "PREPARING", "SHIPPING", "COMPLETED"];
+
+const STEP_ICONS: Record<string, React.ReactNode> = {
+    PENDING_PAYMENT: <MdOutlineAccessTime className="w-5 h-5" />,
+    PREPARING: <MdOutlineInventory2 className="w-5 h-5" />,
+    SHIPPING: <MdLocalShipping className="w-5 h-5" />,
+    COMPLETED: <MdCheckCircle className="w-5 h-5" />,
+};
 
 /* ═══════════════════ PAGE ═══════════════════ */
 export default function OrderTrackingPage() {
@@ -89,8 +111,9 @@ export default function OrderTrackingPage() {
         }
     };
 
-    const statusMeta = result ? (STATUS_LABELS[result.Status] ?? { label: result.Status, color: "text-gray-600 bg-gray-50 border-gray-200", icon: "📋" }) : null;
-    const currentStep = result ? STATUS_STEPS.indexOf(result.Status) : -1;
+    const resolvedStatus = result?.Status === "PAYMENT_CONFIRMING" ? "PENDING_PAYMENT" : result?.Status;
+    const statusMeta = result ? (STATUS_LABELS[result.Status] ?? { label: result.Status, color: "text-gray-600 bg-gray-50 border-gray-200", icon: <HiOutlineClipboardDocumentList className="w-7 h-7" /> }) : null;
+    const currentStep = result ? STATUS_STEPS.indexOf(resolvedStatus) : -1;
 
     return (
         <div className="font-sans bg-[#F5F5F0] min-h-screen flex flex-col">
@@ -178,7 +201,7 @@ export default function OrderTrackingPage() {
                 {/* ── Error ── */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-start gap-2">
-                        <span className="text-lg">❌</span>
+                        <MdCancel className="w-5 h-5 shrink-0 mt-0.5" />
                         <p>{error}</p>
                     </div>
                 )}
@@ -188,7 +211,7 @@ export default function OrderTrackingPage() {
                     <>
                         {/* Status Banner */}
                         <div className={`rounded-2xl border p-5 flex items-center gap-4 ${statusMeta.color}`}>
-                            <span className="text-3xl">{statusMeta.icon}</span>
+                            <span className="shrink-0">{statusMeta.icon}</span>
                             <div>
                                 <p className="text-xs font-semibold uppercase tracking-wider opacity-70">Trạng thái đơn hàng</p>
                                 <p className="text-xl font-bold">{statusMeta.label}</p>
@@ -213,8 +236,8 @@ export default function OrderTrackingPage() {
                                             const meta = STATUS_LABELS[step];
                                             return (
                                                 <div key={step} className="flex flex-col items-center gap-2 w-20">
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 transition-all z-10 ${done ? "bg-[#8B1A1A] border-[#8B1A1A] text-white scale-110" : "bg-white border-gray-300 text-gray-400"}`}>
-                                                        {meta.icon}
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all z-10 ${done ? "bg-[#8B1A1A] border-[#8B1A1A] text-white scale-110" : "bg-white border-gray-300 text-gray-400"}`}>
+                                                        {STEP_ICONS[step]}
                                                     </div>
                                                     <p className={`text-xs text-center leading-tight ${done ? "text-[#8B1A1A] font-semibold" : "text-gray-400"}`}>
                                                         {meta.label}
@@ -230,47 +253,70 @@ export default function OrderTrackingPage() {
                         {/* Order Details */}
                         <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
                             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Thông tin đơn hàng</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <div className="space-y-3">
-                                    {result.CustomerName && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Người đặt</span>
-                                            <span className="font-medium text-gray-900">{result.CustomerName}</span>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                {result.CustomerName && (
+                                    <div className="flex items-start gap-2">
+                                        <MdPerson className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Người đặt</p>
+                                            <p className="font-medium text-gray-900 break-words">{result.CustomerName}</p>
                                         </div>
-                                    )}
-                                    {result.ReceiverName && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Người nhận</span>
-                                            <span className="font-medium text-gray-900">{result.ReceiverName}</span>
+                                    </div>
+                                )}
+                                {result.ReceiverName && (
+                                    <div className="flex items-start gap-2">
+                                        <MdPerson className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Người nhận</p>
+                                            <p className="font-medium text-gray-900 break-words">{result.ReceiverName}</p>
                                         </div>
-                                    )}
-                                    {result.ReceiverPhone && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Điện thoại</span>
-                                            <span className="font-medium text-gray-900">{result.ReceiverPhone}</span>
+                                    </div>
+                                )}
+                                {result.ReceiverPhone && (
+                                    <div className="flex items-start gap-2">
+                                        <MdPhone className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Điện thoại</p>
+                                            <p className="font-medium text-gray-900">{result.ReceiverPhone}</p>
                                         </div>
-                                    )}
-                                </div>
-                                <div className="space-y-3">
-                                    {result.DeliveryAddress && (
-                                        <div className="flex justify-between gap-2">
-                                            <span className="text-gray-500 shrink-0">Địa chỉ</span>
-                                            <span className="font-medium text-gray-900 text-right">{result.DeliveryAddress}</span>
+                                    </div>
+                                )}
+                                {result.CustomerEmail && (
+                                    <div className="flex items-start gap-2">
+                                        <MdEmail className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Email</p>
+                                            <p className="font-medium text-gray-900 break-words">{result.CustomerEmail}</p>
                                         </div>
-                                    )}
-                                    {result.DeliveryDate && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Ngày giao dự kiến</span>
-                                            <span className="font-medium text-gray-900">{formatDate(result.DeliveryDate)}</span>
+                                    </div>
+                                )}
+                                {result.DeliveryAddress && (
+                                    <div className="flex items-start gap-2 sm:col-span-2">
+                                        <MdLocationOn className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Địa chỉ giao hàng</p>
+                                            <p className="font-medium text-gray-900 break-words">{result.DeliveryAddress}</p>
                                         </div>
-                                    )}
-                                    {result.CreatedAt && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Ngày đặt</span>
-                                            <span className="font-medium text-gray-900">{formatDate(result.CreatedAt)}</span>
+                                    </div>
+                                )}
+                                {result.DeliveryDate && (
+                                    <div className="flex items-start gap-2">
+                                        <MdCalendarToday className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Ngày giao dự kiến</p>
+                                            <p className="font-medium text-gray-900">{formatDate(result.DeliveryDate)}</p>
                                         </div>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
+                                {result.CreatedAt && (
+                                    <div className="flex items-start gap-2">
+                                        <MdCalendarToday className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+                                        <div className="min-w-0">
+                                            <p className="text-xs text-gray-400">Ngày đặt</p>
+                                            <p className="font-medium text-gray-900">{formatDate(result.CreatedAt)}</p>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Total */}
@@ -308,7 +354,10 @@ export default function OrderTrackingPage() {
                         {/* Greeting */}
                         {result.GreetingMessage && (
                             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-                                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1">Lời chúc gửi kèm 💌</p>
+                                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <MdEmail className="w-4 h-4" />
+                                    Lời chúc gửi kèm
+                                </p>
                                 <p className="text-sm text-amber-900 italic">"{result.GreetingMessage}"</p>
                             </div>
                         )}
