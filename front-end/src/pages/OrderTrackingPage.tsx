@@ -4,6 +4,7 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { authService } from "../services/authService";
 import apiClient from "../services/apiClient";
+import { FiLoader, FiSearch } from "react-icons/fi";
 import { isValidEmail, isValidOrderCode } from "../utils/validation";
 
 /* ═══════════════════ HELPERS ═══════════════════ */
@@ -20,11 +21,11 @@ function formatDate(dateStr: string) {
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
     PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-yellow-600 bg-yellow-50 border-yellow-200", icon: "⏳" },
-    PREPARING:       { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200",   icon: "📦" },
-    SHIPPING:        { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🚚" },
-    COMPLETED:       { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: "✅" },
-    CANCELLED:       { label: "Đã huỷ",          color: "text-red-600 bg-red-50 border-red-200",     icon: "❌" },
-    DELIVERY_FAILED: { label: "Giao thất bại",   color: "text-orange-600 bg-orange-50 border-orange-200", icon: "⚠️" },
+    PREPARING: { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200", icon: "📦" },
+    SHIPPING: { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🚚" },
+    COMPLETED: { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: "✅" },
+    CANCELLED: { label: "Đã huỷ", color: "text-red-600 bg-red-50 border-red-200", icon: "❌" },
+    DELIVERY_FAILED: { label: "Giao thất bại", color: "text-orange-600 bg-orange-50 border-orange-200", icon: "⚠️" },
 };
 
 const STATUS_STEPS = ["PENDING_PAYMENT", "PREPARING", "SHIPPING", "COMPLETED"];
@@ -161,17 +162,12 @@ export default function OrderTrackingPage() {
                         >
                             {loading ? (
                                 <>
-                                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
+                                    <FiLoader className="w-4 h-4 animate-spin" />
                                     Đang tìm...
                                 </>
                             ) : (
                                 <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-                                    </svg>
+                                    <FiSearch className="w-4 h-4" />
                                     Tra cứu đơn hàng
                                 </>
                             )}
