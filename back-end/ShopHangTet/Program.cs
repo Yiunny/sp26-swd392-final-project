@@ -124,6 +124,7 @@ builder.Services.AddScoped<IGiftBoxService, GiftBoxService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 // Internal user management
 builder.Services.AddScoped<InternalUserService>();
+builder.Services.AddScoped<CustomerService>();
 // Mix & Match admin service
 builder.Services.AddScoped<IMixMatchService, MixMatchService>();
 // Review moderation service
