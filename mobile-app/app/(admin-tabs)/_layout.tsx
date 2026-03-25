@@ -89,6 +89,18 @@ export default function AdminTabLayout() {
                 />
             )}
 
+            {(isAdmin || isStaff) && (
+                <Tabs.Screen
+                    name="reviews"
+                    options={{
+                        title: 'Đánh giá',
+                        tabBarIcon: ({ color, size }) => (
+                            <Ionicons name="chatbubble-ellipses-outline" size={size} color={color} />
+                        ),
+                    }}
+                />
+            )}
+
             <Tabs.Screen
                 name="account"
                 options={{

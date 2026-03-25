@@ -72,6 +72,7 @@ function App() {
           <Route path="/order-success" element={<OrderSuccessPage />} />
           <Route path="/order-tracking" element={<OrderTrackingPage />} />
           <Route path="/orders" element={<OrdersPage />} />
+          <Route path="/orders/code/:code" element={<OrderDetailPage />} />
           <Route path="/orders/:id" element={<OrderDetailPage />} />
           <Route path="/mix-match" element={<MixMatchPage />} />
 

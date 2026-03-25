@@ -5,6 +5,7 @@ import {
     RefreshControl, Alert, Image, Modal, TextInput, ScrollView, Switch,
 } from 'react-native';
 import { AppColors, BorderRadius, Spacing } from '../../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 import { adminService } from '../../services/adminService';
 
 function formatPrice(v: number) { return v.toLocaleString('vi-VN') + 'đ'; }
@@ -268,7 +269,7 @@ export default function AdminGiftBoxesScreen() {
                             <View style={styles.modalHeader}>
                                 <Text style={styles.modalTitle}>{editDetail ? 'Chỉnh sửa giỏ quà' : 'Thêm giỏ quà mới'}</Text>
                                 <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                    <Text style={styles.closeBtn}>✕</Text>
+                                    <Ionicons name="close" size={22} color={AppColors.textMuted} />
                                 </TouchableOpacity>
                             </View>
 
@@ -327,15 +328,15 @@ export default function AdminGiftBoxesScreen() {
                                     </View>
                                     <View style={styles.qtyControl}>
                                         <TouchableOpacity onPress={() => updateItemQty(fi.ItemId, fi.Quantity - 1)} style={styles.qtyBtn}>
-                                            <Text style={styles.qtyBtnText}>−</Text>
+                                            <Ionicons name="remove" size={16} color={AppColors.text} />
                                         </TouchableOpacity>
                                         <Text style={styles.qtyValue}>{fi.Quantity}</Text>
                                         <TouchableOpacity onPress={() => updateItemQty(fi.ItemId, fi.Quantity + 1)} style={styles.qtyBtn}>
-                                            <Text style={styles.qtyBtnText}>+</Text>
+                                            <Ionicons name="add" size={16} color={AppColors.text} />
                                         </TouchableOpacity>
                                     </View>
                                     <TouchableOpacity onPress={() => removeItem(fi.ItemId)}>
-                                        <Text style={{ color: '#DC2626', fontSize: 16 }}>✕</Text>
+                                        <Ionicons name="close-circle" size={20} color="#DC2626" />
                                     </TouchableOpacity>
                                 </View>
                             ))}
@@ -388,7 +389,7 @@ export default function AdminGiftBoxesScreen() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Chọn sản phẩm</Text>
                             <TouchableOpacity onPress={() => setShowItemPicker(false)}>
-                                <Text style={styles.closeBtn}>✕</Text>
+                                <Ionicons name="close" size={22} color={AppColors.textMuted} />
                             </TouchableOpacity>
                         </View>
                         <FlatList
