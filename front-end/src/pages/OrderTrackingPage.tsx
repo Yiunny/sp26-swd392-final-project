@@ -5,6 +5,7 @@ import Footer from "../components/Footer";
 import { authService } from "../services/authService";
 import apiClient from "../services/apiClient";
 import { FiLoader, FiSearch } from "react-icons/fi";
+import { isValidEmail, isValidOrderCode } from "../utils/validation";
 
 /* ═══════════════════ HELPERS ═══════════════════ */
 function formatPrice(v: number) {
@@ -20,11 +21,11 @@ function formatDate(dateStr: string) {
 
 const STATUS_LABELS: Record<string, { label: string; color: string; icon: string }> = {
     PENDING_PAYMENT: { label: "Chờ thanh toán", color: "text-yellow-600 bg-yellow-50 border-yellow-200", icon: "⏳" },
-    PREPARING:       { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200",   icon: "📦" },
-    SHIPPING:        { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🚚" },
-    COMPLETED:       { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: "✅" },
-    CANCELLED:       { label: "Đã huỷ",          color: "text-red-600 bg-red-50 border-red-200",     icon: "❌" },
-    DELIVERY_FAILED: { label: "Giao thất bại",   color: "text-orange-600 bg-orange-50 border-orange-200", icon: "⚠️" },
+    PREPARING: { label: "Đang chuẩn bị", color: "text-blue-600 bg-blue-50 border-blue-200", icon: "📦" },
+    SHIPPING: { label: "Đang giao hàng", color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🚚" },
+    COMPLETED: { label: "Giao thành công", color: "text-green-600 bg-green-50 border-green-200", icon: "✅" },
+    CANCELLED: { label: "Đã huỷ", color: "text-red-600 bg-red-50 border-red-200", icon: "❌" },
+    DELIVERY_FAILED: { label: "Giao thất bại", color: "text-orange-600 bg-orange-50 border-orange-200", icon: "⚠️" },
 };
 
 const STATUS_STEPS = ["PENDING_PAYMENT", "PREPARING", "SHIPPING", "COMPLETED"];
