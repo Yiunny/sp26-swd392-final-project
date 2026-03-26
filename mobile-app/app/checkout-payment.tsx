@@ -443,7 +443,7 @@ export default function CheckoutPaymentScreen() {
           // Remove each selected item from the cart individually
           const parsedSelected: CartItemDto[] = JSON.parse(selectedItems);
           await Promise.all(
-            parsedSelected.map((si) => cartService.removeItem(si.Id).catch(() => {}))
+            parsedSelected.map((si) => cartService.removeItem(si.Id).catch(() => { }))
           );
         } else if (!itemsParam) {
           // Full cart checkout — clear everything
@@ -698,7 +698,7 @@ export default function CheckoutPaymentScreen() {
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryTotalLabel}>Tổng thanh toán</Text>
-            <Text style={styles.summaryTotalValue}>{formatPrice(totalAmount + 35000)}</Text>
+            <Text style={styles.summaryTotalValue}>{formatPrice(totalAmount + 30000)}</Text>
           </View>
         </View>
       </ScrollView>
@@ -745,7 +745,7 @@ export default function CheckoutPaymentScreen() {
                 <View style={styles.qrInfoRow}>
                   <View style={styles.qrInfoItem}>
                     <Text style={styles.qrInfoLabel}>Tổng thanh toán</Text>
-                    <Text style={styles.qrInfoValue}>{formatPrice(totalAmount + 35000)}</Text>
+                    <Text style={styles.qrInfoValue}>{formatPrice(totalAmount + 30000)}</Text>
                   </View>
                   <View style={styles.qrInfoDivider} />
                   <View style={styles.qrInfoItem}>

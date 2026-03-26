@@ -47,6 +47,9 @@ export default function OrderSuccessPage() {
     const [searchParams] = useSearchParams();
     const storedCode = sessionStorage.getItem("last_order_code") ?? "";
     const orderCode = (searchParams.get("code") ?? storedCode).toUpperCase();
+    const storedId = sessionStorage.getItem("last_order_id") ?? "";
+    const orderId = searchParams.get("id") ?? storedId;
+
     const [isPaid, setIsPaid] = useState(false);
     const [totalAmount, setTotalAmount] = useState(0);
 
@@ -140,8 +143,8 @@ export default function OrderSuccessPage() {
                                     <p className="text-xl font-bold text-gray-900">#{orderCode}</p>
                                 </div>
                                 <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${isPaid
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-orange-100 text-orange-600"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-orange-100 text-orange-600"
                                     }`}>
                                     {isPaid ? "Đã xác nhận thanh toán" : "Chờ xác nhận thanh toán"}
                                 </div>
@@ -160,7 +163,7 @@ export default function OrderSuccessPage() {
                             )}
 
                             <Link
-                                to={`/orders/code/${orderCode}`}
+                                to={orderId ? `/orders/${orderId}` : `/orders/code/${orderCode}`}
                                 className="text-xs font-bold text-[#8B1A1A] uppercase tracking-wider hover:underline flex items-center gap-1"
                             >
                                 Xem chi tiết đơn hàng
@@ -187,8 +190,8 @@ export default function OrderSuccessPage() {
                                     <div key={idx} className="flex flex-col items-center z-10 relative" style={{ width: "25%" }}>
                                         <div
                                             className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${idx <= activeStep
-                                                    ? "bg-[#8B1A1A] shadow-lg shadow-[#8B1A1A]/20"
-                                                    : "bg-gray-100"
+                                                ? "bg-[#8B1A1A] shadow-lg shadow-[#8B1A1A]/20"
+                                                : "bg-gray-100"
                                                 }`}
                                         >
                                             {step.icon(idx <= activeStep)}

@@ -78,6 +78,7 @@ export default function B2BCheckoutPage() {
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
     const [qrLoading, setQrLoading] = useState(false);
     const [orderCode, setOrderCode] = useState<string | null>(null);
+    const [orderId, setOrderId] = useState<string | null>(null);
     const [paymentDetected, setPaymentDetected] = useState(false);
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -176,7 +177,7 @@ export default function B2BCheckoutPage() {
                 if (isPaid) {
                     setPaymentDetected(true);
                     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-                    setTimeout(() => navigate(`/order-success?code=${orderCode}`), 1500);
+                    setTimeout(() => navigate(`/order-success?code=${orderCode}&id=${orderId}`), 1500);
                 }
             } catch { /* silently ignore */ }
         };
@@ -224,7 +225,9 @@ export default function B2BCheckoutPage() {
 
             const result = await orderService.createB2BOrder(orderData);
             sessionStorage.setItem("last_order_code", result.orderCode);
+            sessionStorage.setItem("last_order_id", result.orderId);
             setOrderCode(result.orderCode);
+            setOrderId(result.orderId);
 
             // Clear cart
             if (!isBuyNow && !isSelectedCheckout) {
@@ -244,13 +247,13 @@ export default function B2BCheckoutPage() {
                     if (qrUrl) {
                         setQrImageUrl(qrUrl);
                     } else {
-                        navigate(`/order-success?code=${result.orderCode}`);
+                        navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
                     }
                 } else {
-                    navigate(`/order-success?code=${result.orderCode}`);
+                    navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
                 }
             } catch {
-                navigate(`/order-success?code=${result.orderCode}`);
+                navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
             } finally {
                 setQrLoading(false);
             }
@@ -335,13 +338,13 @@ export default function B2BCheckoutPage() {
                                 </div>
 
                                 <Link
-                                    to={`/order-success?code=${orderCode}`}
+                                    to={`/order-success?code=${orderCode}&id=${orderId}`}
                                     className="w-full py-3 bg-[#8B1A1A] hover:bg-[#701515] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer text-center"
                                 >
                                     Đã thanh toán xong
                                 </Link>
                                 <Link
-                                    to={`/order-success?code=${orderCode}`}
+                                    to={`/order-success?code=${orderCode}&id=${orderId}`}
                                     className="text-xs text-gray-400 hover:text-gray-600 hover:underline cursor-pointer text-center"
                                 >
                                     Thanh toán sau (COD)

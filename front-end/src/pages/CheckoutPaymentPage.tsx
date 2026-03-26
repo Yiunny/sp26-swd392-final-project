@@ -76,6 +76,7 @@ export default function CheckoutPaymentPage() {
     const isSelectedCheckout = !isBuyNow && Array.isArray(checkoutState?.selectedItems);
 
     const [orderCode, setOrderCode] = useState<string | null>(null);
+    const [orderId, setOrderId] = useState<string | null>(null);
     const [paymentDetected, setPaymentDetected] = useState(false);
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -105,7 +106,7 @@ export default function CheckoutPaymentPage() {
                         setSelectedAddressId(def ? def.Id : data[0].Id);
                     }
                 })
-                .catch(() => {})
+                .catch(() => { })
                 .finally(() => setAddressesLoading(false));
         }
     }, [user?.Id]);
@@ -172,7 +173,7 @@ export default function CheckoutPaymentPage() {
                     setPaymentDetected(true);
                     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
                     if (qrCountdownRef.current) clearInterval(qrCountdownRef.current);
-                    setTimeout(() => navigate(`/order-success?code=${orderCode}`), 1500);
+                    setTimeout(() => navigate(`/order-success?code=${orderCode}&id=${orderId}`), 1500);
                 }
             } catch {
                 // silently ignore polling errors
@@ -319,7 +320,9 @@ export default function CheckoutPaymentPage() {
 
             const result = await orderService.createB2COrder(orderData);
             setOrderCode(result.orderCode);
+            setOrderId(result.orderId);
             sessionStorage.setItem("last_order_code", result.orderCode);
+            sessionStorage.setItem("last_order_id", result.orderId);
             setPaymentDetected(false);
             setQrExpired(false);
             setQrRemainingSeconds(null);
@@ -343,14 +346,14 @@ export default function CheckoutPaymentPage() {
                     if (qrUrl) {
                         setQrImageUrl(qrUrl);
                     } else {
-                        navigate(`/order-success?code=${result.orderCode}`);
+                        navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
                     }
                 } else {
                     // If QR fails, just navigate to success
-                    navigate(`/order-success?code=${result.orderCode}`);
+                    navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
                 }
             } catch {
-                navigate(`/order-success?code=${result.orderCode}`);
+                navigate(`/order-success?code=${result.orderCode}&id=${result.orderId}`);
             } finally {
                 setQrLoading(false);
             }
@@ -456,7 +459,7 @@ export default function CheckoutPaymentPage() {
                                 ) : null}
 
                                 <p className="text-xs text-gray-400 text-center">
-                                    Tổng thanh toán: <span className="font-bold text-gray-800">{formatPrice(totalAmount + 35000)}</span>
+                                    Tổng thanh toán: <span className="font-bold text-gray-800">{formatPrice(totalAmount + 30000)}</span>
                                 </p>
 
                                 <div className="flex items-center justify-between w-full text-xs">
@@ -478,7 +481,7 @@ export default function CheckoutPaymentPage() {
                                 )}
 
                                 <Link
-                                    to={`/order-success?code=${orderCode}`}
+                                    to={`/order-success?code=${orderCode}&id=${orderId}`}
                                     className={`w-full py-3 text-white text-sm font-bold rounded-xl transition-colors cursor-pointer text-center ${qrExpired ? "bg-gray-400 cursor-not-allowed" : "bg-[#8B1A1A] hover:bg-[#701515]"}`}
                                     onClick={(event) => {
                                         if (qrExpired) event.preventDefault();
@@ -487,7 +490,7 @@ export default function CheckoutPaymentPage() {
                                     Đã thanh toán xong →
                                 </Link>
                                 <Link
-                                    to={`/order-success?code=${orderCode}`}
+                                    to={`/order-success?code=${orderCode}&id=${orderId}`}
                                     className="text-xs text-gray-400 hover:text-gray-600 hover:underline cursor-pointer text-center"
                                 >
                                     Thanh toán sau
@@ -745,7 +748,7 @@ export default function CheckoutPaymentPage() {
                                             Tổng <span className="bg-yellow-300/60 px-1 py-0.5 rounded text-[#8B1A1A] font-bold">thanh toán</span>
                                         </span>
                                         <span className="text-2xl font-bold text-[#8B1A1A]">
-                                            {formatPrice(totalAmount + 35000)}
+                                            {formatPrice(totalAmount + 30000)}
                                         </span>
                                     </div>
                                 </div>
