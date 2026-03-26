@@ -70,7 +70,7 @@ const NAV_ITEMS: { label: string; path: string; icon: ReactNode; roles?: number[
     {
         label: "Đánh giá",
         path: "/admin/reviews",
-        roles: [2],
+        roles: [1, 2],
         icon: <FiStar className="w-5 h-5" />,
     },
     {
@@ -91,9 +91,9 @@ export default function AdminLayout() {
     const user = authService.getUser();
     const roleName = user ? getRoleName(user.Role) : "";
     const userRole = user?.Role ?? 0;
-    
+
     // Normalize role string to number if needed for NAV_ITEMS check
-    const normalizedRole = userRole === "ADMIN" || userRole === "2" || userRole === 2 ? 2 
+    const normalizedRole = userRole === "ADMIN" || userRole === "2" || userRole === 2 ? 2
         : userRole === "STAFF" || userRole === "1" || userRole === 1 ? 1 : 0;
 
     const handleLogout = () => {
@@ -137,11 +137,10 @@ export default function AdminLayout() {
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${
-                                isActive(item.path)
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${isActive(item.path)
                                     ? "bg-[#8B1A1A] text-white shadow-lg shadow-[#8B1A1A]/30"
                                     : "text-gray-400 hover:text-white hover:bg-white/5"
-                            }`}
+                                }`}
                             title={sidebarCollapsed ? item.label : undefined}
                         >
                             {item.icon}

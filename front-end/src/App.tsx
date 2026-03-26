@@ -86,7 +86,6 @@ function App() {
                 <Route index element={<AdminDashboardPage />} />
                 <Route path="users" element={<AdminUsersPage />} />
                 <Route path="mix-match" element={<AdminMixMatchPage />} />
-                <Route path="reviews" element={<AdminReviewsPage />} />
                 <Route path="reports" element={<AdminReportsPage />} />
               </Route>
 
@@ -96,6 +95,7 @@ function App() {
                 <Route path="collections" element={<AdminCollectionsPage />} />
                 <Route path="giftboxes" element={<AdminGiftBoxesPage />} />
                 <Route path="inventory" element={<AdminInventoryPage />} />
+                <Route path="reviews" element={<AdminReviewsPage />} />
               </Route>
             </Route>
           </Route>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { adminService, type OrderStatusSummary, type AdminOrderListItem } from "../../services/adminService";
-import { FiEdit2, FiX } from "react-icons/fi";
+import { FiEdit2, FiX, FiEye } from "react-icons/fi";
+import { orderService, type OrderDto } from "../../services/orderService";
 
 const STATUS_CONFIG: { key: keyof OrderStatusSummary; label: string; color: string; bgColor: string }[] = [
     { key: "PendingPayment", label: "Chờ thanh toán", color: "text-amber-700", bgColor: "bg-amber-500" },
@@ -110,6 +111,11 @@ export default function AdminOrdersPage() {
     const [failureReason, setFailureReason] = useState("");
     const [updatingDelivery, setUpdatingDelivery] = useState(false);
 
+    // Order Details Modal
+    const [showDetail, setShowDetail] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailOrder, setDetailOrder] = useState<OrderDto | null>(null);
+
     const pageSize = 20;
 
     const fetchSummary = async () => {
@@ -150,6 +156,20 @@ export default function AdminOrdersPage() {
         setUpdateResult(null);
         setShowUpdate(true);
         setShowDelivery(false);
+    };
+
+    const openOrderDetail = async (orderId: string) => {
+        setShowDetail(true);
+        setDetailLoading(true);
+        setDetailOrder(null);
+        try {
+            const data = await orderService.getOrderDetailById(orderId);
+            setDetailOrder(data);
+        } catch {
+            // ignore
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
     const handleUpdateStatus = async () => {
@@ -259,10 +279,13 @@ export default function AdminOrdersPage() {
                             <tr><td colSpan={8} className="text-center py-8 text-gray-400">Không có đơn hàng nào</td></tr>
                         ) : orders.map((order) => {
                             const badge = getStatusInfo(order.Status);
+                            const isRefunding = order.Status === "REFUNDING";
                             return (
-                                <tr key={order.Id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                                <tr key={order.Id} className={`border-b border-gray-50 transition-colors ${isRefunding ? "bg-rose-50 hover:bg-rose-100" : "hover:bg-gray-50/50"}`}>
                                     <td className="px-4 py-3">
-                                        <span className="font-mono font-medium text-[#8B1A1A] text-xs">{order.OrderCode}</span>
+                                        <button onClick={() => openOrderDetail(order.Id)} className="font-mono font-medium text-[#8B1A1A] text-xs hover:underline cursor-pointer text-left">
+                                            {order.OrderCode}
+                                        </button>
                                     </td>
                                     <td className="px-4 py-3">
                                         <div>
@@ -282,9 +305,14 @@ export default function AdminOrdersPage() {
                                     </td>
                                     <td className="px-4 py-3 text-xs text-gray-500">{formatDate(order.CreatedAt)}</td>
                                     <td className="px-4 py-3 text-right">
-                                        <button onClick={() => openUpdateForOrder(order)} className="p-1 text-gray-400 hover:text-[#8B1A1A] cursor-pointer" title="Cập nhật trạng thái">
-                                            <FiEdit2 className="w-4 h-4" />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button onClick={() => openOrderDetail(order.Id)} className="p-1 text-gray-400 hover:text-blue-600 cursor-pointer" title="Xem chi tiết">
+                                                <FiEye className="w-4 h-4" />
+                                            </button>
+                                            <button onClick={() => openUpdateForOrder(order)} className="p-1 text-gray-400 hover:text-[#8B1A1A] cursor-pointer" title="Cập nhật trạng thái">
+                                                <FiEdit2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             );
@@ -430,6 +458,101 @@ export default function AdminOrdersPage() {
                             <button onClick={handleUpdateDelivery} disabled={updatingDelivery || !deliveryId.trim()} className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 cursor-pointer">
                                 {updatingDelivery ? "Đang xử lý..." : "Cập nhật"}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Order Detail Modal */}
+            {showDetail && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setShowDetail(false)}>
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                            <h3 className="text-lg font-bold text-gray-900">Chi tiết đơn hàng</h3>
+                            <button onClick={() => setShowDetail(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                                <FiX className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                            {detailLoading ? (
+                                <div className="flex justify-center items-center py-20">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8B1A1A]"></div>
+                                </div>
+                            ) : !detailOrder ? (
+                                <div className="text-center py-20 text-gray-500">Không thể tải thông tin đơn hàng</div>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                            <h4 className="font-bold text-gray-900 mb-3 text-sm">Thông cấu chung</h4>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between"><span className="text-gray-500">Mã đơn:</span> <span className="font-mono font-bold text-[#8B1A1A]">{detailOrder.OrderCode}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Trạng thái:</span> <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getStatusInfo(detailOrder.Status).cls}`}>{getStatusInfo(detailOrder.Status).text}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Loại đơn:</span> <span className="font-medium text-gray-900">{detailOrder.OrderType}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Ngày đặt:</span> <span className="font-medium text-gray-900">{detailOrder.CreatedAt ? formatDate(detailOrder.CreatedAt) : ""}</span></div>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                            <h4 className="font-bold text-gray-900 mb-3 text-sm">Khách hàng</h4>
+                                            <div className="space-y-2 text-sm">
+                                                <div className="flex justify-between"><span className="text-gray-500">Email:</span> <span className="font-medium text-gray-900">{detailOrder.Email}</span></div>
+                                                {detailOrder.CustomerBankName && (
+                                                    <div className="flex justify-between"><span className="text-gray-500">Ngân hàng:</span> <span className="font-medium text-gray-900">{detailOrder.CustomerBankName}</span></div>
+                                                )}
+                                                {detailOrder.CustomerBankAccount && (
+                                                    <div className="flex justify-between"><span className="text-gray-500">STK:</span> <span className="font-medium text-gray-900">{detailOrder.CustomerBankAccount}</span></div>
+                                                )}
+                                                {detailOrder.GreetingMessage && (
+                                                    <div className="flex justify-between"><span className="text-gray-500">Lời chúc:</span> <span className="font-medium text-gray-900 text-right max-w-xs truncate" title={detailOrder.GreetingMessage}>{detailOrder.GreetingMessage}</span></div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                        <h4 className="font-bold text-gray-900 mb-4 text-sm">Sản phẩm</h4>
+                                        <div className="space-y-3">
+                                            {detailOrder.Items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                                                    <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                                                        {item.Image ? <img src={item.Image} alt={item.Name || "Product"} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">No img</div>}
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-medium text-sm text-gray-900 truncate">{item.Name || "Sản phẩm"}</p>
+                                                        <p className="text-xs text-gray-500">Loại: {item.Type}</p>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-bold text-sm text-gray-900">{formatPrice(item.UnitPrice ?? item.Price ?? 0)}</p>
+                                                        <p className="text-xs text-gray-500">x{item.Quantity}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            <div className="pt-3 flex justify-between items-center bg-gray-50 px-3 py-2 rounded-lg mt-2">
+                                                <span className="font-bold text-gray-900 text-sm">Tổng cộng</span>
+                                                <span className="font-bold text-[#8B1A1A] text-lg">{formatPrice(detailOrder.TotalAmount)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {detailOrder.DeliveryAddresses && detailOrder.DeliveryAddresses.length > 0 && (
+                                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                                            <h4 className="font-bold text-gray-900 mb-3 text-sm">Thông tin giao hàng</h4>
+                                            <div className="space-y-3">
+                                                {detailOrder.DeliveryAddresses.map((addr, idx) => (
+                                                    <div key={addr.Id || idx} className="p-3 bg-gray-50 rounded-lg text-sm border border-gray-100">
+                                                        <p className="font-medium text-gray-900">{addr.ReceiverName} - {addr.ReceiverPhone}</p>
+                                                        <p className="text-gray-600 mt-1">{addr.FullAddress}</p>
+                                                        {addr.GreetingMessage && (
+                                                            <p className="text-xs text-gray-500 mt-2 bg-white px-2 py-1.5 rounded border border-gray-200 italic">"{addr.GreetingMessage}"</p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
